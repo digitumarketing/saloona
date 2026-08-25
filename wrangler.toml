@@ -9,7 +9,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "saloona"
-database_id = "replace-with-cloudflare-d1-database-id"
+database_id = "7b38c132-6a23-4d89-a3f2-08a72b2ae079"
 migrations_dir = "migrations"
 
 [vars]
