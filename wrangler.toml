@@ -14,4 +14,4 @@ migrations_dir = "migrations"
 
 [vars]
 APP_ENV = "production"
-BASE_URL = "https://saloona.example.com"
+BASE_URL = "https://saloona-saas.roshaanraza3.workers.dev/"
