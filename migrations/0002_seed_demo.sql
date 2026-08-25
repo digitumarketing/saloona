@@ -2,7 +2,7 @@ insert or ignore into organizations (id, name, industry, plan_id, status, create
 values ('org_demo', 'Demo Salon Lahore', 'salon', 'growth', 'trialing', datetime('now'), datetime('now'));
 
 insert or ignore into locations (id, organization_id, name, city, address, phone, created_at, updated_at)
-values ('loc_demo', 'Gulberg Branch', 'Lahore', 'Main Boulevard, Gulberg', '+92 300 0000000', datetime('now'), datetime('now'));
+values ('loc_demo', 'org_demo', 'Gulberg Branch', 'Lahore', 'Main Boulevard, Gulberg', '+92 300 0000000', datetime('now'), datetime('now'));
 
 insert or ignore into users (id, organization_id, name, email, role, created_at, updated_at)
 values ('usr_demo_owner', 'org_demo', 'Demo Owner', 'owner@example.com', 'owner', datetime('now'), datetime('now'));
