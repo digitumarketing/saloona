@@ -1,0 +1,19 @@
+{
+  "name": "saloona-saas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pakistan-first multi-tenant recurring-service SaaS for salons and future service industries.",
+  "scripts": {
+    "dev": "wrangler dev src/worker.js --local --persist-to=.wrangler/state",
+    "deploy": "wrangler deploy",
+    "d1:create": "wrangler d1 create saloona",
+    "d1:migrate:local": "wrangler d1 migrations apply saloona --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply saloona --remote",
+    "check": "node --check src/worker.js && node --check src/config/brand.js && node --check src/db/repositories.js && node --check src/services/messages.js && node --check src/services/payments.js && node --check src/services/subscriptions.js",
+    "test": "node scripts/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

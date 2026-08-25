@@ -1,0 +1,17 @@
+name = "saloona-saas"
+main = "src/worker.js"
+compatibility_date = "2026-08-25"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "saloona"
+database_id = "replace-with-cloudflare-d1-database-id"
+migrations_dir = "migrations"
+
+[vars]
+APP_ENV = "production"
+BASE_URL = "https://saloona.example.com"
