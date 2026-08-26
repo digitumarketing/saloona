@@ -1,0 +1,32 @@
+// The browser half of the app.
+//
+// This file lives inside src/client rather than at the repo root on purpose:
+// esbuild and Vite resolve a file's tsconfig by walking up from the file, so a
+// root-only config would compile these React components with the Worker's
+// jsxImportSource ("hono/jsx") and every hook would break at runtime. Keeping it
+// here makes the nearest-config lookup land on the right answer.
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // vite/client declares the CSS-import and import.meta.env shapes. The Worker
+    // types are deliberately absent: nothing here runs on the server.
+    "types": ["vite/client"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  // src/shared is compiled twice, once per surface, because both halves import it
+  // and each has to see it under its own lib and module settings.
+  "include": ["./**/*.ts", "./**/*.tsx", "../shared/**/*.ts"]
+}

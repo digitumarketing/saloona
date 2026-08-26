@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A second push to the same branch makes the first run's result irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Both halves of the app: the Worker under Hono's JSX and workers-types,
+      # the client under React's and the DOM.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Runs in workerd against a real local D1. The tenant-isolation suite is
+      # the reason this gate exists — a regression there is a data breach, not a
+      # bug, so it must never merge.
+      - name: Test
+        run: npm test
+
+      # A build failure must not be discovered at deploy time.
+      - name: Build client bundles
+        run: npm run build
