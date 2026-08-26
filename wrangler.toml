@@ -1,10 +1,22 @@
 name = "saloona-saas"
-main = "src/worker.js"
+main = "src/server/index.ts"
 compatibility_date = "2026-08-25"
 workers_dev = true
 
 [observability]
 enabled = true
+
+# Built by `npm run build:client`. Serving the bundles from Cloudflare's asset
+# store rather than the Worker keeps them off the request path entirely.
+#
+# Both handling options are off deliberately. Every HTML page in this app is
+# rendered by the Worker, so an asset lookup that "helpfully" resolves /app to
+# an /app.html that does not exist, or answers a miss with its own 404 page,
+# would shadow real routes. Exact matches only; everything else falls through.
+[assets]
+directory = "./dist/client"
+html_handling = "none"
+not_found_handling = "none"
 
 [[d1_databases]]
 binding = "DB"
@@ -12,6 +24,15 @@ database_name = "saloona"
 database_id = "7b38c132-6a23-4d89-a3f2-08a72b2ae079"
 migrations_dir = "migrations"
 
+# The automation engine. Without these the reminder, birthday, win-back and
+# review-request features exist in the database and never fire.
+#
+#   */5  drains the outbound WhatsApp queue
+#   0 *  wakes hourly so each organization's daily 09:00 run happens at 09:00 in
+#        its own timezone, not in UTC
+[triggers]
+crons = ["*/5 * * * *", "0 * * * *"]
+
 [vars]
 APP_ENV = "production"
-BASE_URL = "https://saloona-saas.roshaanraza3.workers.dev/"
+BASE_URL = "https://saloona-saas.roshaanraza3.workers.dev"

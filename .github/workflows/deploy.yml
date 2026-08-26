@@ -1,11 +1,23 @@
-name: Deploy Cloudflare Worker
+name: Deploy
 
+# Manual only, deliberately.
+#
+# A deploy here runs D1 migrations against the production database, and a
+# migration is the one thing in this pipeline that cannot be rolled back by
+# redeploying the previous commit. Someone should be watching when it happens.
+# CI (.github/workflows/ci.yml) is what gates merges; this is what ships them.
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
+    name: Deploy to Cloudflare
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
     steps:
@@ -14,9 +26,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - run: npm install
-      - run: npm run check
+      - run: npm ci
+
+      # Re-run the gate here rather than trusting that CI ran on this commit: a
+      # manual dispatch can target any ref, including one that never opened a PR.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Must precede the deploy: `wrangler deploy` uploads ./dist/client as the
+      # [assets] directory, and an unbuilt directory ships a Worker whose every
+      # script and stylesheet 404s.
+      - name: Build client bundles
+        run: npm run build
 
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply saloona --remote
@@ -29,3 +55,13 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Cheapest possible proof that the thing that just shipped is serving.
+      - name: Smoke check
+        run: |
+          set -euo pipefail
+          for path in / /pricing /login /sitemap.xml /robots.txt; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://saloona-saas.roshaanraza3.workers.dev${path}")
+            echo "${path} -> ${code}"
+            test "${code}" = "200"
+          done

@@ -1,0 +1,29 @@
+# Local development secrets. Copy to `.dev.vars` and fill in.
+#
+#   cp .dev.vars.example .dev.vars
+#
+# `.dev.vars` is gitignored. Nothing in this file is a real credential.
+#
+# In production these are set with `wrangler secret put NAME` — never in
+# wrangler.toml, which is committed.
+
+# ---------------------------------------------------------------------------
+# Required
+# ---------------------------------------------------------------------------
+
+# Wraps every per-tenant WhatsApp access token before it is written to D1.
+# 32 bytes, base64. Generate one with:
+#   openssl rand -base64 32
+#
+# Rotating this makes every stored WhatsApp connection unreadable, and each
+# salon has to reconnect. Treat it as permanent.
+ENCRYPTION_KEY=
+
+# ---------------------------------------------------------------------------
+# Optional
+# ---------------------------------------------------------------------------
+
+# Transactional email: verification and password reset. With this unset, mail is
+# logged to the console instead of sent — which is what you want locally, and a
+# silent failure in production.
+RESEND_API_KEY=

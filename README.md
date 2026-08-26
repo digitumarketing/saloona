@@ -1,111 +1,213 @@
-# Saloona by Digitum
+# Saloona
 
-Saloona is a Pakistan-first multi-tenant SaaS for salons and future recurring-service industries. The public brand is centralized in `src/config/brand.js` so copy, pricing, and contact details remain easy to update.
+Customer retention software for Pakistani salons, by [Digitum](https://digitum.pk).
 
-## What is included
+A salon records who came in, what they had done, and what they paid. Saloona turns
+that into loyalty points the customer can see on their own phone, and into a list
+of the regulars who have quietly stopped coming — with a button to message them
+back, from the salon's own WhatsApp number.
 
-- Cloudflare Worker app serving the marketing website, owner dashboard shell, API, customer QR/PWA pages, sitemap, robots, and web manifest.
-- Cloudflare D1 migrations for generic organizations, locations, users, staff, customers, services, appointments, visits, rewards, message queue, payments, integrations, and Digitum SaaS subscriptions.
-- Repository layer in `src/db/repositories.js` to keep business logic away from D1-specific calls and reduce future Postgres/Supabase migration cost.
-- Business-owned WhatsApp abstraction and message queue in `src/services/messages.js`.
-- Business-owned payment abstraction for Cash, Raast, JazzCash, and Easypaisa in `src/services/payments.js`.
-- Separate Digitum SaaS subscription billing model in `src/services/subscriptions.js`.
-- SEO pages: home, features, pricing, industries/salons, about, contact, privacy, terms, refund/cancellation, login, and signup.
-- GitHub Actions deployment workflow for Cloudflare Workers and D1 migrations.
+Sold as a monthly subscription. The entities are deliberately generic
+(`organization`, `location`, `staff`, `customer`, `service`, `visit`, `reward`,
+`campaign`), so the same platform can serve dental clinics, spas, pet grooming and
+car detailing without a schema rewrite.
 
-## Pricing defaults
+---
 
-- Starter: PKR 3,999/month
-- Growth: PKR 7,999/month
-- Scale: PKR 14,999/month
+## Two money paths, never crossed
 
-Edit `src/config/brand.js` to change names, pricing, support details, and public copy.
+This is the constraint the whole design hangs off, and it is worth stating before
+anything technical.
+
+| | Who pays | Who receives | How |
+|---|---|---|---|
+| **Subscription** | The salon | Digitum | Recurring card payment |
+| **Service payment** | The customer | The salon, directly | Cash, Raast, JazzCash, Easypaisa |
+
+Digitum never touches a salon customer's money. Saloona *records* that a customer
+paid; it does not collect it. Likewise, **each salon connects its own WhatsApp
+Business number and pays Meta for its own messages** — messages arrive from the
+salon's number, and the platform never fronts a shared sender or a shared bill.
+
+---
+
+## Architecture
+
+One Cloudflare Worker serves four surfaces from one deployment:
+
+| Path | What it is | Rendered |
+|---|---|---|
+| `/` | Marketing, legal, and auth pages | Server, Hono JSX |
+| `/app/*` | Owner and staff dashboard | Client, React SPA |
+| `/j/:slug/*` | Customer wallet, QR image, printable poster | Client PWA + server |
+| `/api/*` | JSON API | — |
+
+```text
+src/
+  server/          the Worker
+    index.ts       entry point: fetch + scheduled
+    routes/        HTTP surface, one file per area
+    repositories/  every SQL statement in the app lives here
+    services/      auth, messaging, campaigns, scheduler
+    middleware/    session, tenancy, CSRF
+    lib/           db, time, phone, crypto, validation
+    views/         server-rendered HTML
+  client/          the browser bundles (own tsconfig — React, not Hono JSX)
+    app/           dashboard SPA
+    wallet/        customer PWA
+    lib/           router, data hooks, API client
+  shared/          code both halves import: plans, brand, QR, asset paths
+migrations/        D1 migrations, applied in order
+test/              runs in workerd against a real local D1
+```
+
+### Tenant isolation is structural, not remembered
+
+Every tenant-scoped query is written with a `{where}` marker:
+
+```ts
+tenantDb.first("select * from customers where id = ? {where}", [id]);
+```
+
+`TenantDb` rewrites that into `and organization_id = ?` and supplies the ID from
+the session — never from anything the client sent. A developer who forgets the
+marker gets a query that returns nothing, rather than one that returns everyone.
+`PlatformDb` is the explicit, greppable escape hatch for the handful of genuinely
+cross-tenant reads (resolving a public slug, the cron sweep).
+
+`test/tenant-isolation.test.ts` walks every ID-bearing endpoint as a second salon
+and asserts a 404. **A new endpoint that takes an ID belongs in that file.**
+
+### D1 is the first database, not a permanent dependency
+
+Every SQL statement lives in `src/server/repositories/`. IDs are prefixed strings
+(`cus_…`, `vis_…`) rather than autoincrement integers, timestamps are ISO-8601 UTC
+strings, no business logic lives in triggers, and SQLite-only syntax is avoided.
+Moving to Postgres means rewriting one directory.
+
+---
 
 ## Local setup
 
+Running the app locally needs nothing external — no Meta account, no payment
+gateway, no domain. [SETUP.md](SETUP.md) covers the accounts and credentials that
+only matter for putting it in front of real salons.
+
 ```bash
-npm install
-npm run check
+npm ci
+```
+
+```bash
+cp .dev.vars.example .dev.vars
+```
+
+Generate the encryption key that wraps per-tenant WhatsApp tokens and paste it
+into `.dev.vars`:
+
+```bash
+openssl rand -base64 32
+```
+
+Create the local database:
+
+```bash
 npm run d1:migrate:local
+```
+
+Run it:
+
+```bash
 npm run dev
 ```
 
-Open the Wrangler URL shown in the terminal. Demo data is seeded for `org_demo`.
-
-## Cloudflare setup
-
-1. Create a D1 database:
+That builds the client bundles once, then starts Wrangler. While working on the
+dashboard or wallet, run the watcher in a second terminal so a save rebuilds:
 
 ```bash
-npm run d1:create
+npm run dev:client
 ```
 
-2. Copy the returned `database_id` into `wrangler.toml`.
-3. Set `BASE_URL` in `wrangler.toml` to the production domain.
-4. Apply migrations:
+### Demo data
+
+An empty database renders the product's best screen — the list of regulars who
+have stopped coming — as an empty state. With the dev server running, in another
+terminal:
 
 ```bash
-npm run d1:migrate:remote
+npm run seed
 ```
 
-5. Deploy:
+That creates a salon with a full year of plausible history: loyal customers,
+customers who are drifting, customers who are long gone, one who has withdrawn
+WhatsApp consent, and one who scanned the QR code and never came in. It drives the
+real HTTP API, so the data is exactly what the app would have produced itself. It
+prints the login details when it finishes.
+
+### Checks
+
+```bash
+npm run check
+```
+
+Typechecks both halves — the Worker under Hono's JSX and `workers-types`, the
+client under React's and the DOM — then runs the test suite inside workerd against
+a real local D1.
+
+---
+
+## Deploying
+
+Two secrets, set once, never in `wrangler.toml`:
+
+```bash
+npx wrangler secret put ENCRYPTION_KEY
+```
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+```
+
+`ENCRYPTION_KEY` is effectively permanent: rotating it makes every stored WhatsApp
+connection unreadable and every salon has to reconnect. Without `RESEND_API_KEY`,
+email verification and password resets are logged to the console instead of sent.
+
+Then, from GitHub, run the **Deploy** workflow (`.github/workflows/deploy.yml`).
+It typechecks, tests, builds the client, applies D1 migrations, deploys, and
+smoke-checks the result. It is manual on purpose: a D1 migration is the one step
+here that redeploying the previous commit will not undo.
+
+Repository secrets required: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+
+To deploy from a laptop instead:
 
 ```bash
 npm run deploy
 ```
 
-## GitHub deployment
+---
 
-Add these repository secrets:
+## The automation engine
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+`[triggers]` in `wrangler.toml` drives everything the salon does not have to
+remember:
 
-Push to `main`. The workflow in `.github/workflows/deploy.yml` installs dependencies, runs syntax checks, applies D1 migrations, and deploys the Worker.
+- **every 5 minutes** — drain the outbound WhatsApp queue
+- **hourly** — wake up so each organization's daily 09:00 jobs (return reminders,
+  birthdays, review requests, at-risk recalculation, retention cleanup) fire at
+  09:00 *in its own timezone*, not in UTC
 
-## API overview
+Without those cron triggers the reminder features exist in the database and never
+fire. They are not optional.
 
-- `POST /api/signup`
-- `GET /api/bootstrap`
-- `GET/POST /api/customers`
-- `GET/POST /api/services`
-- `GET /api/staff`
-- `GET /api/appointments`
-- `POST /api/visits`
-- `GET /api/analytics`
-- `POST /api/messages`
-- `POST /api/payments/manual`
-- `POST /api/webhooks/payments/:provider`
-- `GET /api/subscription`
+---
 
-Pass `x-organization-id` for tenant-scoped API calls. The demo defaults to `org_demo`.
+## Before going public
 
-## Future Postgres/Supabase migration notes
-
-The application is intentionally organized as:
-
-```text
-Routes and UI
-  -> Repositories and service abstractions
-    -> D1 SQL adapter today
-    -> Postgres/Supabase adapter later
-```
-
-To keep migrations easier:
-
-- IDs are string IDs with prefixes, not database-generated integer IDs.
-- Business entities are generic, not salon-only.
-- Payment and WhatsApp providers are abstractions.
-- SQL avoids D1-only features where practical.
-- Tenant access is scoped by `organization_id` across operational tables.
-
-Before a large migration, export D1, transform schema/data for PostgreSQL, validate row counts and relationships, then swap repository implementations.
-
-## Launch checklist
-
-- Replace temporary brand/domain details in `src/config/brand.js` and `wrangler.toml`.
-- Configure real authentication before public onboarding.
-- Connect WhatsApp Business API provider credentials.
-- Complete JazzCash/Easypaisa/Raast provider adapters after merchant approval.
-- Add production-grade authorization checks for every API route.
-- Review privacy, terms, and refund text with local legal counsel.
+- [ ] Meta Business verification and WhatsApp Cloud API Tech Provider onboarding
+      (long lead time — start before the code is finished)
+- [ ] Payment gateway merchant KYC for the subscription side
+- [ ] Terms, privacy, refund and data-processing pages reviewed by a Pakistani
+      lawyer, not just proofread
+- [ ] Subscription billing, trial expiry, and dunning — not built yet; the
+      Settings "change plan" button currently emails sales
+- [ ] Pilot with 2–3 real salons before opening signups

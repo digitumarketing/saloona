@@ -5,15 +5,38 @@
   "type": "module",
   "description": "Pakistan-first multi-tenant recurring-service SaaS for salons and future service industries.",
   "scripts": {
-    "dev": "wrangler dev src/worker.js --local --persist-to=.wrangler/state",
-    "deploy": "wrangler deploy",
+    "build": "vite build",
+    "dev": "vite build && wrangler dev",
+    "dev:client": "vite build --watch",
+    "typecheck": "tsc -p tsconfig.json && tsc -p src/client",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run test",
+    "seed": "node scripts/seed.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "icons": "python3 scripts/generate-icons.py",
     "d1:create": "wrangler d1 create saloona",
     "d1:migrate:local": "wrangler d1 migrations apply saloona --local",
-    "d1:migrate:remote": "wrangler d1 migrations apply saloona --remote",
-    "check": "node --check src/worker.js && node --check src/config/brand.js && node --check src/db/repositories.js && node --check src/services/messages.js && node --check src/services/payments.js && node --check src/services/subscriptions.js",
-    "test": "node scripts/smoke-test.mjs"
+    "d1:migrate:remote": "wrangler d1 migrations apply saloona --remote"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260826.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11",
     "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "hono": "^4.13.5",
+    "qrcode-generator": "^2.0.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
   }
 }
