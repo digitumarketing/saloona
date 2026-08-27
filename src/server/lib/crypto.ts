@@ -36,6 +36,21 @@ const PBKDF2_VERSION = /^pbkdf2-sha256-(\d+)$/;
 /** Legacy single-pass SHA-256, retained only to verify and upgrade old rows. */
 const LEGACY_VERSION = "sha256-v0";
 
+/**
+ * Salt used to burn an equivalent derivation when there is no stored record.
+ *
+ * The login route calls this function even when the email matched no user,
+ * specifically so response time does not reveal whether an address is
+ * registered. Returning early on a missing hash defeated that: a request for an
+ * unknown address skipped ~100ms of PBKDF2 and came back measurably faster,
+ * which is a user-enumeration oracle against a product whose logins are salon
+ * owners' email addresses.
+ *
+ * The value is not secret and is never compared against anything. It exists only
+ * so the work happens.
+ */
+const ABSENT_RECORD_SALT = "0000000000000000000000000000000000000000000000000000000000000000";
+
 export interface PasswordRecord {
   hash: string;
   salt: string;
@@ -81,7 +96,14 @@ export async function verifyPassword(
   password: string,
   stored: { hash: string | null; salt: string | null; version?: string | null }
 ): Promise<{ valid: boolean; needsUpgrade: boolean }> {
-  if (!stored.hash || !stored.salt) return { valid: false, needsUpgrade: false };
+  if (!stored.hash || !stored.salt) {
+    // Deliberately not an early return: see ABSENT_RECORD_SALT. This also means
+    // every login request exercises PBKDF2, so a deploy-time smoke check that
+    // posts bad credentials and expects 401 will catch an iteration count the
+    // runtime refuses — the failure mode that took production down on 27 Aug.
+    await pbkdf2(password, ABSENT_RECORD_SALT);
+    return { valid: false, needsUpgrade: false };
+  }
 
   const version = stored.version ?? LEGACY_VERSION;
 
