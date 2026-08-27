@@ -1,15 +1,37 @@
 /**
  * Password hashing and session token generation.
  *
- * Passwords use PBKDF2-SHA256 at OWASP's recommended iteration count. The
- * previous implementation was a single SHA-256 pass, which is a fast
- * general-purpose hash and recoverable on commodity GPUs. Stored hashes are
- * versioned so legacy records can be upgraded on next successful login.
+ * Passwords use PBKDF2-SHA256. The previous implementation was a single SHA-256
+ * pass, which is a fast general-purpose hash and recoverable on commodity GPUs.
+ * Stored hashes are versioned so older records can be re-hashed on next
+ * successful login.
  */
 
-const PBKDF2_ITERATIONS = 210_000;
+/**
+ * 100,000 is the **platform ceiling**, not a security preference.
+ *
+ * The Workers runtime rejects anything higher:
+ *
+ *   NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not
+ *   supported (requested 210000).
+ *
+ * This code shipped at OWASP's recommended 210,000 and every signup and login
+ * on production returned 500 — while working locally, because the dev runtime
+ * does not enforce the cap. Do not raise this above 100,000 without first
+ * confirming the deployed runtime accepts it; `npm test` will not catch it.
+ *
+ * Below OWASP's recommendation, the compensating control is the login rate
+ * limiter in lib/rate-limit.ts, which is what actually bounds an online guessing
+ * attack. An offline attack against a stolen database is the case this weakens,
+ * so it is a reason to keep the database itself well guarded rather than a
+ * reason to pretend the number can be higher than the platform allows.
+ */
+const PBKDF2_ITERATIONS = 100_000;
 const DERIVED_KEY_BITS = 256;
-const CURRENT_VERSION = "pbkdf2-sha256-210000";
+const CURRENT_VERSION = `pbkdf2-sha256-${PBKDF2_ITERATIONS}`;
+
+/** Matches any PBKDF2 record and captures the iteration count it was made with. */
+const PBKDF2_VERSION = /^pbkdf2-sha256-(\d+)$/;
 
 /** Legacy single-pass SHA-256, retained only to verify and upgrade old rows. */
 const LEGACY_VERSION = "sha256-v0";
@@ -28,12 +50,12 @@ function randomHex(bytes: number): string {
   return toHex(crypto.getRandomValues(new Uint8Array(bytes)).buffer as ArrayBuffer);
 }
 
-async function pbkdf2(password: string, salt: string): Promise<string> {
+async function pbkdf2(password: string, salt: string, iterations = PBKDF2_ITERATIONS): Promise<string> {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, [
     "deriveBits"
   ]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: PBKDF2_ITERATIONS },
+    { name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations },
     key,
     DERIVED_KEY_BITS
   );
@@ -62,10 +84,29 @@ export async function verifyPassword(
   if (!stored.hash || !stored.salt) return { valid: false, needsUpgrade: false };
 
   const version = stored.version ?? LEGACY_VERSION;
-  const candidate =
-    version === LEGACY_VERSION
-      ? await legacySha256(password, stored.salt)
-      : await pbkdf2(password, stored.salt);
+
+  let candidate: string;
+  if (version === LEGACY_VERSION) {
+    candidate = await legacySha256(password, stored.salt);
+  } else {
+    // Re-derive at the count the record was WRITTEN with, not the current one.
+    // Reading the iteration count back out of the version string is what makes
+    // the constant above safe to change: a hash written at another count still
+    // verifies, and `needsUpgrade` re-writes it at the current count on the way
+    // through. Deriving at the current count instead would silently reject every
+    // existing password the moment the constant moved.
+    const match = PBKDF2_VERSION.exec(version);
+    if (!match) return { valid: false, needsUpgrade: false };
+    const iterations = Number(match[1]);
+    try {
+      candidate = await pbkdf2(password, stored.salt, iterations);
+    } catch {
+      // A record written at a count this runtime will not compute — the 210,000
+      // case above. Unverifiable is not the same as wrong, but there is nothing
+      // better to return, and failing here beats a 500 on the login route.
+      return { valid: false, needsUpgrade: false };
+    }
+  }
 
   const valid = timingSafeEqual(candidate, stored.hash);
   return { valid, needsUpgrade: valid && version !== CURRENT_VERSION };
