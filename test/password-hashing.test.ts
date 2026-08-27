@@ -77,6 +77,34 @@ describe("password hashing", () => {
     expect(result.needsUpgrade).toBe(false);
   });
 
+  it("does the same work for an absent record as for a real one", async () => {
+    // The login route calls verifyPassword even when the email matched nothing,
+    // so that response time does not say whether an address is registered. That
+    // only holds if the absent case actually derives a hash — an early return
+    // skips ~100ms of PBKDF2 and hands out a user-enumeration oracle.
+    //
+    // Timing assertions are flaky by nature, so this measures generously: the
+    // absent path must take a substantial fraction of the real one, not an
+    // exact match.
+    const real = await hashPassword("a-real-password");
+
+    const startReal = performance.now();
+    await verifyPassword("a-real-password", real);
+    const realMs = performance.now() - startReal;
+
+    const startAbsent = performance.now();
+    const absent = await verifyPassword("a-real-password", { hash: null, salt: null, version: null });
+    const absentMs = performance.now() - startAbsent;
+
+    expect(absent.valid).toBe(false);
+    expect(absent.needsUpgrade).toBe(false);
+    expect(
+      absentMs,
+      `absent-record path took ${absentMs.toFixed(1)}ms vs ${realMs.toFixed(1)}ms for a real record — ` +
+        "it is short-circuiting, which leaks whether an account exists"
+    ).toBeGreaterThan(realMs / 4);
+  });
+
   it("still verifies and upgrades a legacy sha256 record", async () => {
     // The pre-PBKDF2 scheme: a single SHA-256 pass over `salt:password`.
     const salt = "0123456789abcdef0123456789abcdef";

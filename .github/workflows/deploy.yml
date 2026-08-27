@@ -60,8 +60,30 @@ jobs:
       - name: Smoke check
         run: |
           set -euo pipefail
+          BASE=https://saloona-saas.roshaanraza3.workers.dev
+
           for path in / /pricing /login /sitemap.xml /robots.txt; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "https://saloona-saas.roshaanraza3.workers.dev${path}")
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE}${path}")
             echo "${path} -> ${code}"
             test "${code}" = "200"
           done
+
+          # Exercise the password path, which none of the pages above do.
+          #
+          # A deploy once passed every check here while signup and login returned
+          # 500 for every user on production: the hash used more PBKDF2 iterations
+          # than the deployed runtime permits, and nothing that renders a page
+          # touches PBKDF2. This posts credentials that cannot match anything and
+          # expects a clean 401 — the login route derives a hash even when the
+          # address is unknown, so an unsupported iteration count surfaces as a
+          # 500 right here instead of on a salon owner's first sign-in.
+          #
+          # 429 is accepted because the login rate limiter is shared across
+          # deploys and a burst of runs can legitimately trip it; that is still
+          # the Worker answering rather than falling over.
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${BASE}/api/auth/login" \
+            -H 'content-type: application/json' \
+            -H "origin: ${BASE}" \
+            -d '{"email":"smoke-check@invalid.test","password":"not-a-real-password"}')
+          echo "POST /api/auth/login -> ${code}"
+          test "${code}" = "401" || test "${code}" = "429"
