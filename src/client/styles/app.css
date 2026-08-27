@@ -63,6 +63,60 @@
   --shadow-lift: 0 2px 4px rgb(16 26 45 / 0.05), 0 18px 40px -16px rgb(16 26 45 / 0.22);
 }
 
+/*
+ * Classes that other rules build on are declared with `@utility`, not as plain
+ * classes in `@layer components`.
+ *
+ * Tailwind v4's `@apply` accepts utilities only. A plain `.btn {}` in the
+ * components layer is not one, so `.btn-primary { @apply btn ... }` failed the
+ * build outright with "Cannot apply unknown utility class `btn`" — the whole
+ * stylesheet, and therefore the whole client build, on one unresolved name.
+ * `@utility` registers these as real utilities, which makes them applicable and
+ * sorts them in declaration order, so `btn-lg` still overrides `btn`'s padding.
+ */
+
+/* Numbers in tables align on the decimal; PKR figures are common enough here to
+   make this a global default. */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+         transition-all duration-150 select-none;
+  /* Touch target floor: reception staff use this on a phone at speed. */
+  min-height: 2.75rem;
+
+  &:disabled {
+    @apply cursor-not-allowed opacity-55;
+  }
+}
+
+@utility btn-lg {
+  @apply px-6 py-3 text-base;
+  min-height: 3.25rem;
+}
+
+@utility btn-sm {
+  @apply px-3 py-1.5 text-xs;
+  min-height: 2.25rem;
+}
+
+@utility card {
+  /* `rounded-card` / `shadow-card`, not `rounded-[--radius-card]`: the tokens are
+     declared in @theme, so Tailwind generates named utilities for them. The v3
+     bracket form emits `border-radius: --radius-card`, which is not valid CSS. */
+  @apply rounded-card border border-ink-100 bg-white shadow-card;
+}
+
+@utility card-body {
+  @apply p-5 sm:p-6;
+}
+
+@utility badge {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -90,12 +144,6 @@
     @apply text-ink-900 font-semibold tracking-tight;
     text-wrap: balance;
   }
-
-  /* Numbers in tables should align on the decimal, and PKR figures are common
-     enough here to make this a global default. */
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
 }
 
 @layer components {
@@ -119,17 +167,6 @@
 
   /* ---------------------------------------------------------------- buttons */
 
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
-           transition-all duration-150 select-none;
-    /* Touch target floor: reception staff use this on a phone at speed. */
-    min-height: 2.75rem;
-  }
-
-  .btn:disabled {
-    @apply cursor-not-allowed opacity-55;
-  }
-
   .btn-primary {
     @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800;
   }
@@ -150,28 +187,10 @@
     @apply btn bg-gold-500 text-ink-900 hover:bg-gold-300;
   }
 
-  .btn-lg {
-    @apply px-6 py-3 text-base;
-    min-height: 3.25rem;
-  }
-
-  .btn-sm {
-    @apply px-3 py-1.5 text-xs;
-    min-height: 2.25rem;
-  }
-
   /* ------------------------------------------------------------------ cards */
 
-  .card {
-    @apply rounded-[--radius-card] border border-ink-100 bg-white shadow-[--shadow-card];
-  }
-
-  .card-body {
-    @apply p-5 sm:p-6;
-  }
-
   .card-hover {
-    @apply card transition-shadow duration-200 hover:shadow-[--shadow-lift];
+    @apply card transition-shadow duration-200 hover:shadow-lift;
   }
 
   .stat-card {
@@ -223,10 +242,6 @@
   }
 
   /* ----------------------------------------------------------------- badges */
-
-  .badge {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
-  }
 
   .badge-neutral {
     @apply badge bg-ink-100 text-ink-700;

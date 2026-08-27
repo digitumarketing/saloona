@@ -48,10 +48,7 @@ settingsRoutes.get("/", async (c) => {
       new MessageQueue(tenantDb, context.organization.timezone).usageThisMonth(),
       // Not part of the session context, but the Business tab cannot let an owner
       // edit a field it is unable to show them the current value of.
-      tenantDb.first<{ phone: string | null; logo_url: string | null }>(
-        "select phone, logo_url from organizations where id = ? {where}",
-        [context.organization.id]
-      )
+      tenantDb.organizationRow<{ phone: string | null; logo_url: string | null }>("phone, logo_url")
     ]);
 
     const limits = planLimits(context.organization.planId);
@@ -124,10 +121,9 @@ settingsRoutes.patch("/organization", ownerOnly, async (c) => {
   if (updates.length === 0) return c.json({ ok: true });
 
   try {
-    await db(c).run(
-      `update organizations set ${updates.map(([column]) => `${column} = ?`).join(", ")}, updated_at = ?
-       where id = ? {where}`,
-      [...updates.map(([, value]) => value), nowIso(), session(c).organization.id]
+    await db(c).updateOrganization(
+      `${updates.map(([column]) => `${column} = ?`).join(", ")}, updated_at = ?`,
+      [...updates.map(([, value]) => value), nowIso()]
     );
     return c.json({ ok: true });
   } catch (error) {

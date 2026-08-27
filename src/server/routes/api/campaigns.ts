@@ -7,6 +7,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { db, requireRole, session } from "../../middleware/auth.js";
 import { apiError, validationError } from "../../lib/http.js";
 import { campaignCreateSchema, parseBody } from "../../lib/validation.js";
@@ -18,7 +19,7 @@ import type { AppEnv } from "../../types.js";
 
 export const campaignRoutes = new Hono<AppEnv>();
 
-function service(c: Parameters<Parameters<typeof campaignRoutes.get>[1]>[0]) {
+function service(c: Context<AppEnv>) {
   const context = session(c);
   return new CampaignService(db(c), {
     id: context.organization.id,
@@ -29,10 +30,7 @@ function service(c: Parameters<Parameters<typeof campaignRoutes.get>[1]>[0]) {
 }
 
 /** Campaigns are a paid capability; Starter can send reminders but not campaigns. */
-const requireCampaigns = async (
-  c: Parameters<Parameters<typeof campaignRoutes.get>[1]>[0],
-  next: () => Promise<void>
-) => {
+const requireCampaigns: MiddlewareHandler<AppEnv> = async (c, next) => {
   const context = session(c);
   if (!planAllows(context.organization.planId, "campaigns")) {
     return c.json(

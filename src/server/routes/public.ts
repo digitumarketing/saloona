@@ -13,6 +13,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import { PlatformDb, type TenantDb } from "../lib/db.js";
 import { apiError, validationError } from "../lib/http.js";
@@ -41,7 +42,7 @@ interface PublicOrg {
 }
 
 /** Resolves the salon behind a public slug, or null if it is unknown/suspended. */
-async function resolveOrg(c: Parameters<Parameters<typeof publicRoutes.get>[1]>[0], slug: string): Promise<PublicOrg | null> {
+async function resolveOrg(c: Context<AppEnv>, slug: string): Promise<PublicOrg | null> {
   const platform = new PlatformDb(c.env.DB);
   const row = await platform.first<{
     id: string;
@@ -79,8 +80,7 @@ publicRoutes.get("/:slug", async (c) => {
       "select name, description, points_required from rewards where is_active = 1 {where} order by points_required asc limit 10"
     );
     const settings = parseSettings(
-      (await org.db.first<{ settings_json: string | null }>("select settings_json from organizations where id = ? {where}", [org.id]))
-        ?.settings_json ?? null
+      (await org.db.organizationRow<{ settings_json: string | null }>("settings_json"))?.settings_json ?? null
     );
 
     return c.json({
@@ -262,7 +262,7 @@ async function issueWalletToken(db: TenantDb, customerId: string): Promise<strin
   return token;
 }
 
-function setWalletCookie(c: Parameters<Parameters<typeof publicRoutes.get>[1]>[0], token: string): void {
+function setWalletCookie(c: Context<AppEnv>, token: string): void {
   const url = new URL(c.req.url);
   setCookie(c, WALLET_COOKIE, token, {
     path: "/",

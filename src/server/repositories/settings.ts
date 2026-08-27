@@ -42,21 +42,14 @@ export class SettingsRepository {
   constructor(private readonly db: TenantDb) {}
 
   async get(): Promise<OrgSettings> {
-    const row = await this.db.first<{ settings_json: string | null }>(
-      "select settings_json from organizations where id = ? {where}",
-      [this.db.organizationId]
-    );
+    const row = await this.db.organizationRow<{ settings_json: string | null }>("settings_json");
     return parseSettings(row?.settings_json ?? null);
   }
 
   async update(patch: Partial<OrgSettings>): Promise<OrgSettings> {
     const current = await this.get();
     const next: OrgSettings = { ...current, ...patch };
-    await this.db.run("update organizations set settings_json = ?, updated_at = ? where id = ? {where}", [
-      JSON.stringify(next),
-      nowIso(),
-      this.db.organizationId
-    ]);
+    await this.db.updateOrganization("settings_json = ?, updated_at = ?", [JSON.stringify(next), nowIso()]);
     return next;
   }
 }

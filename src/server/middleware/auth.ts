@@ -123,9 +123,17 @@ export const csrfProtection: MiddlewareHandler<AppEnv> = async (c, next) => {
   const referer = c.req.header("referer");
   const source = origin ?? referer;
 
-  if (!source || !host) {
+  if (!source) {
     return c.json({ error: "Request blocked: missing origin", code: "csrf_blocked" }, 403);
   }
+
+  // Compared against the request URL rather than the Host header. workerd builds
+  // `request.url` from what Cloudflare actually routed on, so it is always
+  // present, whereas a synthetic request may carry no Host header at all — which
+  // previously made every write in the test suite fail as a CSRF violation. The
+  // Host header is still honoured when present, since a proxy may rewrite one
+  // without the other.
+  const expectedHost = host ?? new URL(c.req.url).host;
 
   let sourceHost: string;
   try {
@@ -134,7 +142,7 @@ export const csrfProtection: MiddlewareHandler<AppEnv> = async (c, next) => {
     return c.json({ error: "Request blocked: invalid origin", code: "csrf_blocked" }, 403);
   }
 
-  if (sourceHost !== host) {
+  if (sourceHost !== expectedHost) {
     return c.json({ error: "Request blocked: origin mismatch", code: "csrf_blocked" }, 403);
   }
 

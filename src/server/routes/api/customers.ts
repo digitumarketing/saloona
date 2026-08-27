@@ -8,6 +8,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { db, session } from "../../middleware/auth.js";
 import { apiError, pagination, validationError } from "../../lib/http.js";
 import { customerCreateSchema, customerUpdateSchema, parseBody } from "../../lib/validation.js";
@@ -19,7 +20,7 @@ import type { AppEnv } from "../../types.js";
 
 export const customerRoutes = new Hono<AppEnv>();
 
-function repo(c: Parameters<Parameters<typeof customerRoutes.get>[1]>[0]) {
+function repo(c: Context<AppEnv>) {
   const context = session(c);
   return new CustomerRepository(db(c), context.organization.timezone);
 }

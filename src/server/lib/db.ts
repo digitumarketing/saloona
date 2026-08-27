@@ -15,11 +15,10 @@
 export type Row = Record<string, unknown>;
 
 export class DatabaseError extends Error {
-  constructor(
-    message: string,
-    readonly cause?: unknown
-  ) {
-    super(message);
+  constructor(message: string, cause?: unknown) {
+    // `cause` goes through the standard Error option rather than a class field:
+    // Error already declares it, so redeclaring it here shadows the built-in.
+    super(message, { cause });
     this.name = "DatabaseError";
   }
 }
@@ -110,9 +109,20 @@ export class TenantDb extends BaseDb {
     const column = match[1] ? `${match[1]}.organization_id` : "organization_id";
     const preceding = sql.slice(0, match.index ?? 0);
     const keyword = /\bwhere\b/i.test(preceding) ? "and" : "where";
+
+    // The tenant id binds at the marker's own position, not at the end of the
+    // parameter list. The marker usually sits last, where the two coincide — but
+    // any query with a placeholder after it (`limit ?` on every paginated read,
+    // a trailing predicate on several others) gets every later value shifted by
+    // one. SQLite reports that as a datatype mismatch when the types differ; when
+    // they happen to agree it silently compares organization_id against whatever
+    // the caller passed next, which defeats the scoping this class exists to
+    // guarantee.
+    const position = (preceding.match(/\?/g) ?? []).length;
+
     return {
       sql: sql.replace(match[0], `${keyword} ${column} = ?`),
-      params: [...params, this.organizationId]
+      params: [...params.slice(0, position), this.organizationId, ...params.slice(position)]
     };
   }
 
@@ -161,6 +171,29 @@ export class TenantDb extends BaseDb {
     const row = await this.first<T>(`select * from ${table} where id = ? {where}`, [id]);
     if (!row) throw new NotFoundError(entity);
     return row;
+  }
+
+  /**
+   * Reads this tenant's own `organizations` row.
+   *
+   * `organizations` is the one tenant-owned table with no `organization_id`
+   * column — its primary key *is* the tenant id. The `{where}` marker therefore
+   * cannot apply to it, and using it there produced "no such column:
+   * organization_id" at runtime. These two methods are the scoped way in, and
+   * they supply the id themselves, so no caller can name another tenant's row
+   * even by mistake.
+   */
+  organizationRow<T = Row>(columns = "*"): Promise<T | null> {
+    return this.runQuery<T>(`select ${columns} from organizations where id = ?`, [this.organizationId], "first");
+  }
+
+  /** Updates this tenant's own `organizations` row. `assignments` is the SET clause. */
+  updateOrganization(assignments: string, params: unknown[] = []): Promise<D1Result> {
+    return this.runQuery(
+      `update organizations set ${assignments} where id = ?`,
+      [...params, this.organizationId],
+      "run"
+    );
   }
 }
 

@@ -45,6 +45,7 @@ import { brand } from "../../shared/brand.js";
 import { PLANS } from "../../shared/plans.js";
 import type { AppEnv } from "../types.js";
 import type { Context } from "hono";
+import type { Child } from "hono/jsx";
 
 export const marketingRoutes = new Hono<AppEnv>();
 
@@ -56,7 +57,7 @@ export const marketingRoutes = new Hono<AppEnv>();
  */
 const PUBLIC_CACHE = "public, max-age=0, s-maxage=600, stale-while-revalidate=86400";
 
-type RenderOptions = PageMeta & { children?: unknown };
+type RenderOptions = PageMeta & { children?: Child };
 
 /**
  * A cached page is deliberately given no nonce. Every visitor served from the

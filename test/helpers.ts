@@ -12,6 +12,19 @@ import { SELF } from "cloudflare:test";
 /** Must match the request origin, or `csrfProtection` rejects every write. */
 export const ORIGIN = "http://localhost";
 
+/**
+ * A distinct client address per tenant.
+ *
+ * Signup is capped at 5 attempts per hour per IP, and this suite registers ten
+ * salons. Sharing one address makes the sixth signup fail with a 429 — the
+ * limiter working exactly as designed, reported as a test failure. Real salons
+ * sign up from their own connections, so the harness should too. 203.0.113.0/24
+ * is the RFC 5737 documentation range and routes nowhere.
+ */
+export function ipForTenant(index: number): string {
+  return `203.0.113.${(index % 250) + 1}`;
+}
+
 export interface Client {
   get(path: string): Promise<Response>;
   post(path: string, body?: unknown): Promise<Response>;
@@ -19,9 +32,9 @@ export interface Client {
   del(path: string): Promise<Response>;
 }
 
-export function client(cookie?: string): Client {
+export function client(cookie?: string, ip = "203.0.113.254"): Client {
   const send = (method: string, path: string, body?: unknown) => {
-    const headers: Record<string, string> = { origin: ORIGIN };
+    const headers: Record<string, string> = { origin: ORIGIN, "cf-connecting-ip": ip };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (cookie) headers.cookie = cookie;
     return SELF.fetch(`${ORIGIN}${path}`, {
@@ -66,10 +79,12 @@ export interface Tenant extends Client {
  *
  * `index` keeps the email and phone unique — phone is customer identity in this
  * product, and two tenants sharing one owner number would make the isolation
- * assertions ambiguous.
+ * assertions ambiguous. It also picks the client address, so each salon signs up
+ * from its own connection and the signup rate limit stays untouched.
  */
 export async function signUpTenant(index: number, planId = "growth"): Promise<Tenant> {
-  const anonymous = client();
+  const ip = ipForTenant(index);
+  const anonymous = client(undefined, ip);
   const response = await anonymous.post("/api/auth/signup", {
     businessName: `Test Salon ${index}`,
     ownerName: `Owner ${index}`,
@@ -85,7 +100,7 @@ export async function signUpTenant(index: number, planId = "growth"): Promise<Te
   }
 
   const cookie = sessionCookie(response);
-  const authenticated = client(cookie);
+  const authenticated = client(cookie, ip);
   const bootstrap = await ok<{ organization: { id: string; slug: string } }>(authenticated.get("/api/bootstrap"));
 
   return {
