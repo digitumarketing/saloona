@@ -167,20 +167,86 @@ The cumulative hit pattern (signups 1–5 pass, 6 blocked) also proves **storage
 
 ---
 
+## 3a. What running it for the first time found
+
+Two bugs that no amount of reading the code would have surfaced. Both are worth
+keeping in mind as a pattern: this project's remaining risk is concentrated in
+paths that had never been *executed*, not in paths that had never been reviewed.
+
+### The client build had never succeeded
+
+`npm run build` was listed as "never attempted". The first run failed outright:
+
+```
+Cannot apply unknown utility class `btn`
+```
+
+Tailwind v4's `@apply` accepts **utilities only**. A plain `.btn { … }` declared
+inside `@layer components` is not one, so `.btn-primary { @apply btn … }` could
+never resolve — and because Tailwind fails the whole stylesheet on one
+unresolved name, this took down the entire client build, not just one rule.
+
+The shared bases (`btn`, `card`, `card-body`, `badge`, `tabular`) are now
+`@utility`, which registers them as real utilities and keeps them ordered by
+declaration, so `btn-lg` still overrides `btn`'s padding. The v3-style
+`rounded-[--radius-card]` arbitrary values became `rounded-card` / `shadow-card`
+— the named utilities the `@theme` tokens already generate. The bracket form
+emitted `border-radius: --radius-card`, which is not valid CSS.
+
+### PBKDF2 at 210,000 iterations breaks on deployed Workers
+
+This is the one to remember.
+
+```
+NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not
+supported (requested 210000).
+```
+
+The password hash used OWASP's recommended 210,000 iterations. **The deployed
+Workers runtime caps PBKDF2 at 100,000. The local runtime does not enforce the
+cap.** So signup and login returned 500 for every user on production while:
+
+- `npm run typecheck` was clean
+- all 8 tests passed
+- `npm run build` succeeded
+- CI was green
+- the deploy workflow succeeded **and its smoke check passed all five URLs**
+
+None of those post a password. The bug was only visible by signing up against
+production after deploying. The deploy smoke check is worth extending to cover
+one authenticated round trip for exactly this reason.
+
+`verifyPassword` now re-derives at the iteration count stored in the hash's own
+version string rather than at whatever the current constant says. The versioning
+existed in the schema but was unused on this path, so lowering the constant
+would otherwise have silently rejected every existing password.
+
+`test/password-hashing.test.ts` asserts the constant stays at or below 100,000.
+That test is deliberately an assertion about the *value* and not about
+behaviour — the failure only reproduces on deployed Workers, so a behavioural
+test would pass locally no matter what the number said.
+
+---
+
 ## 4. Where the code stands — precisely
+
+**Updated 27 August 2026, second session.** Everything the first session left unverified has now been executed. Two further bugs surfaced by doing so, one of which only exists on deployed Cloudflare and is written up in §3a.
 
 | Item | State |
 |---|---|
 | `npm run typecheck` | ✅ **Passes clean**, both halves (Worker under Hono JSX + workers-types; client under React + DOM) |
 | Test runtime boots | ✅ Yes, after the compatibility-date fix |
-| `npm test` | 🟡 **2 of 5 passing** as of the last executed run. The 3 remaining failures were all the signup 429, which the helper fix addresses — **re-run required to confirm** |
-| `npm run build` | ⬜ **Never attempted.** Config and both entry points verified present, names match the `assets.ts` contract, but Vite + Tailwind 4 bundling is an unexercised path |
-| Local commits | ⬜ **Not committed.** 11 source files changed since commit `43d3ecc`, plus this document |
-| Pull request | ⬜ **Does not exist** |
-| CI | ⬜ **Has never run.** `ci.yml` triggers on `pull_request` and `push: main`; the push to `fix/security-foundation` matched neither. This is why the Actions tab shows "0 workflow runs" |
-| Deployed Worker | ⚠️ Old, **contains the tenant-isolation bug from §3** |
+| `npm test` | ✅ **14 of 14 pass**, across three files. The three that had never executed an assertion now run and pass |
+| `npm run build` | ✅ **Passes** — it did not, the first time it was ever run. See §3a |
+| Local commits | ✅ Committed and pushed |
+| Pull request | ✅ [#2](https://github.com/digitumarketing/saloona/pull/2) merged. [#6](https://github.com/digitumarketing/saloona/pull/6) open with the PBKDF2 fix |
+| CI | ✅ **Green**, and has now actually run — the Actions tab was empty because `ci.yml` triggers on `pull_request` and `push: main`, and the earlier push to `fix/security-foundation` matched neither |
+| Deployed Worker | ✅ Tenant-isolation fix is **live**. ⚠️ Still carries the PBKDF2 bug until #6 merges and redeploys |
+| `ENCRYPTION_KEY` | ✅ Set on the production Worker |
+| `RESEND_API_KEY` | ⬜ **Unset.** Password reset is silently broken in production until it is |
+| Production D1 | 🟡 Migrations current. Holds only throwaway test rows — `org_demo` from `0002_seed_demo.sql`, plus two orgs named "aaa" |
 
-Current branch: `fix/security-foundation`. Remote `origin/main` is at `738cf8f`.
+`origin/main` is at the #2 merge commit. Production was deployed from it.
 
 ### The two tests that pass
 
@@ -251,15 +317,25 @@ Do not tell the owner the app is launch-ready until §6.1 exists. It is the diff
 
 ### 6.1 Monetisation — Phase 5, the real blocker
 
-Nothing here exists. Today the Settings "Change plan" button is a `mailto:hello@digitum.pk`.
+Today the Settings "Change plan" button is still a `mailto:hello@digitum.pk`.
 
-- Trial-expiry paywall (trial state is tracked; nothing enforces it)
-- Safepay recurring subscriptions **with webhook signature verification** — an unverified webhook endpoint that grants plan access is a free-subscription exploit
-- Invoices
-- Dunning for failed payments
-- Super-admin console: view organizations, suspend, refund, inspect usage
+- ✅ **Trial-expiry paywall — enforced** as of 27 Aug 2026. It previously existed
+  only as a red banner in the React app: the nightly job moved a lapsed workspace
+  to `past_due`, the banner said "automated messages are paused until payment
+  clears", and the server went on queueing and sending them anyway. Nothing
+  followed from not paying. Now `activeOrganizations` skips them,
+  `QueueWorker.claimBatch` stops draining them, and `requireActiveSubscription`
+  returns 402 on the send routes. Covered by `test/subscription-gate.test.ts`,
+  which asserts both sides — a past-due salon keeps full read *and write* access
+  to its own records, and a "fix" that blocked reads would be a product mistake
+- ⬜ Safepay recurring subscriptions **with webhook signature verification** — an unverified webhook endpoint that grants plan access is a free-subscription exploit
+- ⬜ Invoices
+- ⬜ Dunning for failed payments
+- ⬜ Super-admin console: view organizations, suspend, refund, inspect usage
 
-Until this ships, Saloona can acquire users but cannot charge them.
+**The enforcement half is done; the collection half is not.** Saloona can now
+stop serving an unpaid workspace, but there is still no way for that workspace to
+pay. Safepay is the blocker, and it is gated on merchant KYC (§8.2).
 
 ### 6.2 Operational — Phase 1 remainder
 
@@ -285,15 +361,18 @@ Until this ships, Saloona can acquire users but cannot charge them.
 
 ## 7. Risks a fresh session must not get wrong
 
-1. **The deployed Worker has a tenant-isolation bug.** §3, last item. Ship the fix or take it down before anyone real touches it.
-2. **Never weaken a rate limit or an auth control to make a test pass.** The 429 in §3 was the product working. Fix the harness.
-3. **`wrangler.toml` and `vitest.config.ts` compatibility dates must match**, and both must be ≤ the installed workerd.
-4. **Bump `ASSET_VERSION`** in [src/shared/assets.ts](src/shared/assets.ts) when client bundles change, or browsers serve stale JS against new API shapes.
-5. **`npm run build` before any deploy.** `wrangler deploy` uploads `dist/client` as-is.
-6. **Do not read payload shapes from assumption.** Two bugs in `scripts/seed.mjs` came from assuming signup returns `{organization}` and that visit counts live at `bootstrap.month.visits` rather than `summary.month.visits`. Read the server route first.
-7. **Digitum must never touch customer transaction money.** §1.
-8. **Do not add salon-specific names to the schema.** §1.
-9. `[assets]` has `html_handling = "none"` and `not_found_handling = "none"` deliberately. Every HTML page is Worker-rendered; asset-store fallbacks would shadow real routes.
+1. ~~The deployed Worker has a tenant-isolation bug.~~ **Fixed and live** as of 27 Aug 2026.
+2. **A green pipeline is not proof the thing works.** typecheck, 8 passing tests, a successful build, green CI and a successful deploy whose smoke check passed all five URLs coexisted with a production where *nobody could create an account* (§3a). The smoke check only asks for pages that need no password. Extend it, and sign up against production after any deploy that touches auth.
+3. **The local Workers runtime is more permissive than the deployed one.** PBKDF2 iteration caps are the known case; assume there are others. A path that only ever runs locally is not verified.
+4. **Never weaken a rate limit or an auth control to make a test pass.** The 429 in §3 was the product working. Fix the harness. Note that the PBKDF2 reduction in §3a is *not* an instance of this — 100,000 is a hard platform ceiling, not a number chosen to make something pass.
+5. **The paywall is server-side now; keep it that way.** `past_due` is enforced in `requireActiveSubscription`, `activeOrganizations` and `QueueWorker.claimBatch`. It was previously a banner in the React app and nothing else, so an expired trial kept every automation running forever. Equally: do **not** "strengthen" it by blocking reads — a past-due salon keeps full access to its own records, deliberately.
+6. **`wrangler.toml` and `vitest.config.ts` compatibility dates must match**, and both must be ≤ the installed workerd.
+7. **Bump `ASSET_VERSION`** in [src/shared/assets.ts](src/shared/assets.ts) when client bundles change, or browsers serve stale JS against new API shapes.
+8. **`npm run build` before any deploy.** `wrangler deploy` uploads `dist/client` as-is.
+9. **Do not read payload shapes from assumption.** Two bugs in `scripts/seed.mjs` came from assuming signup returns `{organization}` and that visit counts live at `bootstrap.month.visits` rather than `summary.month.visits`. Read the server route first.
+10. **Digitum must never touch customer transaction money.** §1.
+11. **Do not add salon-specific names to the schema.** §1.
+12. `[assets]` has `html_handling = "none"` and `not_found_handling = "none"` deliberately. Every HTML page is Worker-rendered; asset-store fallbacks would shadow real routes.
 
 ---
 
