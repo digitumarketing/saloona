@@ -91,6 +91,36 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
+/**
+ * Requires a workspace that is actually paying (or still inside its trial).
+ *
+ * Gate the *billable* surface with this, not the whole API. A `past_due`
+ * workspace keeps full read and write access to its own records — those belong
+ * to the salon, and locking them out of their own customer list is the wrong
+ * response to an unpaid invoice. What stops is the automation they are paying
+ * for: queued messages stop draining, the daily jobs skip them, and the routes
+ * that would send new outbound messages return 402 here.
+ *
+ * 402 rather than 403: the client distinguishes "you cannot do this" from "this
+ * needs payment", and the dashboard turns the latter into the billing prompt.
+ */
+export const requireActiveSubscription: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const context = c.get("session");
+  if (!context) {
+    return c.json({ error: "Authentication required", code: "unauthenticated" }, 401);
+  }
+  if (context.organization.status === "past_due") {
+    return c.json(
+      {
+        error: "Your subscription is unpaid. Messaging is paused until payment clears.",
+        code: "payment_required"
+      },
+      402
+    );
+  }
+  await next();
+};
+
 /** Restricts a route to specific roles. Owner implicitly satisfies every check. */
 export function requireRole(...roles: Role[]): MiddlewareHandler<AppEnv> {
   return async (c, next) => {

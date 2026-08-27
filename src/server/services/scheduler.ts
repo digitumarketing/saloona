@@ -73,12 +73,26 @@ export async function runScheduled(cron: string, env: Env): Promise<JobReport[]>
   return reports;
 }
 
-/** All organizations eligible for automation. */
+/**
+ * All organizations eligible for automation.
+ *
+ * `past_due` is excluded deliberately. Automation is the paid surface of this
+ * product, and the dashboard already tells a past-due workspace that "automated
+ * messages are paused until payment clears" — this is the query that makes that
+ * true. Leaving it in meant an expired trial kept every reminder, birthday and
+ * win-back campaign running indefinitely, so nothing whatsoever followed from
+ * not paying.
+ *
+ * What stays available to a past-due workspace is its own data: the customer
+ * records belong to the salon, and locking them out of their own customer list
+ * is the wrong response to an unpaid invoice. See `requireActiveSubscription`
+ * in middleware/auth.ts, which draws that line on the API surface.
+ */
 async function activeOrganizations(db: PlatformDb): Promise<OrganizationRow[]> {
   return db.all<OrganizationRow>(
     `select id, name, timezone, plan_id, status, settings_json, trial_ends_at
      from organizations
-     where suspended_at is null and status in ('trialing', 'active', 'past_due')
+     where suspended_at is null and status in ('trialing', 'active')
      order by created_at asc`
   );
 }

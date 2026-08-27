@@ -8,7 +8,7 @@
 
 import { Hono } from "hono";
 import type { Context, MiddlewareHandler } from "hono";
-import { db, requireRole, session } from "../../middleware/auth.js";
+import { db, requireActiveSubscription, requireRole, session } from "../../middleware/auth.js";
 import { apiError, validationError } from "../../lib/http.js";
 import { campaignCreateSchema, parseBody } from "../../lib/validation.js";
 import { CampaignService, type CampaignSegment } from "../../services/campaigns.js";
@@ -80,7 +80,7 @@ campaignRoutes.get("/audience", async (c) => {
   }
 });
 
-campaignRoutes.post("/", requireCampaigns, requireRole("manager"), async (c) => {
+campaignRoutes.post("/", requireActiveSubscription, requireCampaigns, requireRole("manager"), async (c) => {
   const parsed = await parseBody(c.req.raw, campaignCreateSchema);
   if (!parsed.ok) return validationError(c, parsed.errors);
 
@@ -93,7 +93,7 @@ campaignRoutes.post("/", requireCampaigns, requireRole("manager"), async (c) => 
   }
 });
 
-campaignRoutes.post("/:id/send", requireCampaigns, requireRole("manager"), async (c) => {
+campaignRoutes.post("/:id/send", requireActiveSubscription, requireCampaigns, requireRole("manager"), async (c) => {
   try {
     const result = await service(c).send(c.req.param("id"));
     return c.json({
