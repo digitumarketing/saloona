@@ -1,0 +1,28 @@
+# Dependency updates.
+#
+# This app handles other businesses' customer lists and holds each salon's
+# WhatsApp credentials, so a known CVE sitting unnoticed in a transitive
+# dependency is a real exposure rather than a housekeeping item.
+#
+# Grouped deliberately: one PR per ecosystem per week, because ten separate
+# bumps get rubber-stamped or ignored, and both are worse than one reviewed PR.
+# CI runs typecheck, the tenant-isolation suite and the client build on every one
+# of these, which is what makes accepting them safe.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      production:
+        dependency-type: production
+      development:
+        dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
