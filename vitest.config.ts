@@ -23,7 +23,9 @@ export default defineConfig({
     cloudflareTest({
       main: "./src/server/index.ts",
       miniflare: {
-        compatibilityDate: "2026-08-25",
+        // Must match `compatibility_date` in wrangler.toml, and must not exceed
+        // what the bundled workerd supports.
+        compatibilityDate: "2026-08-22",
         d1Databases: ["DB"],
         bindings: {
           TEST_MIGRATIONS: migrations,

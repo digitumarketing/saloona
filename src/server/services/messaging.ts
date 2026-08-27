@@ -198,6 +198,10 @@ export class QueueWorker {
          and m.scheduled_for <= ?
          and (m.locked_at is null or m.locked_at < ?)
          and o.suspended_at is null
+         -- Paused, not dropped: anything queued before the trial lapsed keeps
+         -- its queued status and goes out on the next drain once the workspace
+         -- is paying again. This is the promise the dashboard banner makes.
+         and o.status in ('trialing', 'active')
        order by m.scheduled_for asc limit ?`,
       [nowIso(), staleLock, limit]
     );

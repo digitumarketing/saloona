@@ -34,7 +34,9 @@ async function importKey(rawKey: string): Promise<CryptoKey> {
 /** Encrypts a credential object. The IV is stored alongside, not derived. */
 export async function sealCredentials(
   encryptionKey: string | undefined,
-  payload: Record<string, unknown>
+  // `object` rather than `Record<string, unknown>`: callers pass declared
+  // interfaces, which have no index signature and so are not assignable to it.
+  payload: object
 ): Promise<{ ciphertext: string; iv: string }> {
   if (!encryptionKey) {
     throw new EncryptionError("ENCRYPTION_KEY is not configured; refusing to store credentials in plaintext");

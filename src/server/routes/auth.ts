@@ -6,6 +6,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { AuthError, type RequestMeta } from "../services/auth.js";
 import {
   loginSchema,
@@ -29,7 +30,7 @@ import { baseUrl } from "../lib/url.js";
 export const authRoutes = new Hono<AppEnv>();
 
 /** Maps an AuthError onto its HTTP response, including Retry-After when rate limited. */
-function authErrorResponse(c: Parameters<Parameters<typeof authRoutes.post>[1]>[0], error: unknown) {
+function authErrorResponse(c: Context<AppEnv>, error: unknown) {
   if (error instanceof AuthError) {
     if (error.retryAfterSeconds) {
       c.header("retry-after", String(error.retryAfterSeconds));

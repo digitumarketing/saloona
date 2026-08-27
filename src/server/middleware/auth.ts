@@ -91,6 +91,36 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
+/**
+ * Requires a workspace that is actually paying (or still inside its trial).
+ *
+ * Gate the *billable* surface with this, not the whole API. A `past_due`
+ * workspace keeps full read and write access to its own records — those belong
+ * to the salon, and locking them out of their own customer list is the wrong
+ * response to an unpaid invoice. What stops is the automation they are paying
+ * for: queued messages stop draining, the daily jobs skip them, and the routes
+ * that would send new outbound messages return 402 here.
+ *
+ * 402 rather than 403: the client distinguishes "you cannot do this" from "this
+ * needs payment", and the dashboard turns the latter into the billing prompt.
+ */
+export const requireActiveSubscription: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const context = c.get("session");
+  if (!context) {
+    return c.json({ error: "Authentication required", code: "unauthenticated" }, 401);
+  }
+  if (context.organization.status === "past_due") {
+    return c.json(
+      {
+        error: "Your subscription is unpaid. Messaging is paused until payment clears.",
+        code: "payment_required"
+      },
+      402
+    );
+  }
+  await next();
+};
+
 /** Restricts a route to specific roles. Owner implicitly satisfies every check. */
 export function requireRole(...roles: Role[]): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
@@ -123,9 +153,17 @@ export const csrfProtection: MiddlewareHandler<AppEnv> = async (c, next) => {
   const referer = c.req.header("referer");
   const source = origin ?? referer;
 
-  if (!source || !host) {
+  if (!source) {
     return c.json({ error: "Request blocked: missing origin", code: "csrf_blocked" }, 403);
   }
+
+  // Compared against the request URL rather than the Host header. workerd builds
+  // `request.url` from what Cloudflare actually routed on, so it is always
+  // present, whereas a synthetic request may carry no Host header at all — which
+  // previously made every write in the test suite fail as a CSRF violation. The
+  // Host header is still honoured when present, since a proxy may rewrite one
+  // without the other.
+  const expectedHost = host ?? new URL(c.req.url).host;
 
   let sourceHost: string;
   try {
@@ -134,7 +172,7 @@ export const csrfProtection: MiddlewareHandler<AppEnv> = async (c, next) => {
     return c.json({ error: "Request blocked: invalid origin", code: "csrf_blocked" }, 403);
   }
 
-  if (sourceHost !== host) {
+  if (sourceHost !== expectedHost) {
     return c.json({ error: "Request blocked: origin mismatch", code: "csrf_blocked" }, 403);
   }
 

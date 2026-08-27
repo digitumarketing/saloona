@@ -180,7 +180,7 @@ interface FieldProps {
   autocomplete?: string;
   hint?: string;
   required?: boolean;
-  inputmode?: string;
+  inputmode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search";
   optional?: boolean;
   defaultValue?: string;
 }

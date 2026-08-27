@@ -1,6 +1,11 @@
 name = "saloona-saas"
 main = "src/server/index.ts"
-compatibility_date = "2026-08-25"
+# Pinned to a date the installed workerd actually supports. A compatibility date
+# ahead of the local runtime binary fails to start — `wrangler dev` and the test
+# pool both refuse to boot — and there is nothing to gain by leading it, since
+# this Worker declares no compatibility_flags. Raise it deliberately, together
+# with the same value in vitest.config.ts.
+compatibility_date = "2026-08-22"
 workers_dev = true
 
 [observability]
