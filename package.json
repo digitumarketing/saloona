@@ -33,10 +33,10 @@
     "wrangler": "^4.0.0"
   },
   "dependencies": {
-    "hono": "^4.13.5",
+    "hono": "^4.13.7",
     "qrcode-generator": "^2.0.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   }
 }
