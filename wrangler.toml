@@ -10,24 +10,31 @@ workers_dev = true
 
 # The public hostnames.
 #
-# `custom_domain = true` makes Cloudflare manage the DNS record for each name and
-# point it at this Worker, replacing whatever address record the zone had. Email
-# is untouched — MX records live beside these and are not Worker routes.
+# These are *routes*, not custom domains, and the difference is the whole reason
+# this works. A custom domain asks Cloudflare to create and own the DNS record
+# for the hostname, which it refuses to do while a record already exists:
 #
-# www is attached so that typing it reaches the product rather than a DNS error;
-# the Worker then redirects it to the apex, so only one hostname ever answers
-# with a page. See the first middleware in src/server/index.ts.
+#   Hostname 'saloona.shop' already has externally managed DNS records
+#   (A, CNAME, etc). Delete them first.  [code 100117]
 #
-# workers_dev stays on as an operational fallback for the case where the custom
-# domain is misconfigured.
+# A route leaves the existing record alone and intercepts matching requests
+# instead. The apex and www already resolve to Cloudflare's proxy, so the
+# request reaches the edge either way; the route decides that this Worker
+# answers it rather than the record's origin. Same result, nothing deleted, and
+# no window where the name stops resolving.
+#
+# `/*` on both so every path is claimed — a narrower pattern would leak the
+# unmatched paths through to the old origin.
+#
+# Email is untouched either way: MX is a different record type and is not a
+# route.
 #
 # This block MUST stay above the first [table] header. TOML assigns every bare
-# key to the table most recently opened, so sitting below [observability] made
-# this `observability.routes`, which wrangler warned about and ignored — the
-# deploy succeeded and attached no domain at all.
+# key to the most recently opened table, so sitting below [observability] made
+# it `observability.routes`, which wrangler warned about and ignored.
 routes = [
-  { pattern = "saloona.shop", custom_domain = true },
-  { pattern = "www.saloona.shop", custom_domain = true }
+  { pattern = "saloona.shop/*", zone_name = "saloona.shop" },
+  { pattern = "www.saloona.shop/*", zone_name = "saloona.shop" }
 ]
 
 [observability]
