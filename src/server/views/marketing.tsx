@@ -933,12 +933,18 @@ export const ContactPage: FC = () => (
           </a>
         </div>
 
+        {/* Deliberately no phone number. Support here is email, and one
+            address that is actually answered beats a number nobody picks up. */}
         <div class="card card-body">
-          <h2 class="text-lg">WhatsApp or call</h2>
+          <h2 class="text-lg">When we reply</h2>
           <p class="mt-2 text-sm leading-6 text-ink-600">
-            Sales and onboarding, Monday to Saturday, 10am to 7pm Pakistan Standard Time.
+            Monday to Saturday, 10am to 7pm Pakistan Standard Time. Email sent inside those hours is answered
+            the same working day.
           </p>
-          <p class="tabular mt-5 text-lg font-semibold text-ink-900">{brand.salesPhone}</p>
+          <p class="mt-5 text-sm leading-6 text-ink-600">
+            Already have an account? Write from the email address you signed up with and we can look at your
+            workspace directly.
+          </p>
         </div>
 
         <div class="card card-body md:col-span-2">
@@ -1025,7 +1031,7 @@ export const FAQ_ENTRIES = [
       "No. You connect your salon's own WhatsApp Business number, and every message shows your salon's name. Replies come to you. You pay Meta's messaging charges directly on your own account."
   },
   {
-    question: "Does Digitum receive money my customers pay me?",
+    question: `Does ${brand.companyName} receive money my customers pay me?`,
     answer:
       "Never. Saloona records what a customer paid — cash, Raast, JazzCash, Easypaisa, card, or transfer — so your reports are right. The money goes to your account exactly as it does today. The only payment we collect is your monthly subscription."
   },

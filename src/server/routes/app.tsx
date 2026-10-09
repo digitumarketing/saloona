@@ -81,7 +81,7 @@ appRoutes.get("/app/*", dashboardShell);
  * The salon is looked up here for one reason only: so the page has the right
  * title and the right manifest before any JavaScript runs. A customer adding this
  * to their home screen should get the salon's name under the icon — they are
- * keeping a loyalty card for a salon, not installing software from Digitum. An
+ * keeping a loyalty card for a salon, not installing software from Saloona. An
  * unknown slug returns 404 rather than an empty shell, because a mistyped or
  * retired code should say so.
  */

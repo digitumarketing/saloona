@@ -40,4 +40,21 @@ crons = ["*/5 * * * *", "0 * * * *"]
 
 [vars]
 APP_ENV = "production"
+# The canonical public origin. Every absolute URL the Worker builds comes from
+# here: canonical tags, OG tags, the Organization block in structured data, the
+# join link printed on a salon's QR poster, and the link inside every WhatsApp
+# message. A QR code is printed once and sits on a reception desk for months, so
+# changing this later strands the posters already out in the world.
+#
+# STILL ON workers.dev ON PURPOSE. saloona.shop is registered but has no
+# nameservers yet, so the zone does not exist and the name does not resolve.
+# Pointing canonical tags, OG tags and every QR link at a domain that answers
+# nothing is strictly worse than this URL. Switch both this and the smoke-check
+# BASE in deploy.yml together, in one commit, once `dig saloona.shop` returns an
+# address — and add the custom-domain routes below at the same time:
+#
+#   routes = [
+#     { pattern = "saloona.shop", custom_domain = true },
+#     { pattern = "www.saloona.shop", custom_domain = true }
+#   ]
 BASE_URL = "https://saloona-saas.roshaanraza3.workers.dev"

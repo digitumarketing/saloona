@@ -132,7 +132,7 @@ seoRoutes.get("/manifest.webmanifest", (c) =>
  *
  * A customer who adds the wallet to their home screen should see the salon's
  * name under the icon, not ours — they are keeping a loyalty card for Glow
- * Salon, not installing software from Digitum.
+ * Salon, not installing software from Saloona.
  */
 seoRoutes.get("/j/:slug/manifest.webmanifest", async (c) => {
   const slug = c.req.param("slug");
