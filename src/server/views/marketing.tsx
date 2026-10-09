@@ -776,7 +776,7 @@ export const HomePage: FC = () => (
           </div>
         </div>
 
-        <div class="card card-body">
+        <div class="card-hover card-body">
           <h3 class="text-base">Plain pricing</h3>
           <p class="mt-2 text-sm leading-6 text-ink-600">
             One monthly fee per salon. Every plan includes the customer wallet, loyalty points, and WhatsApp
@@ -817,6 +817,7 @@ export const HomePage: FC = () => (
 const FEATURE_GROUPS = [
   {
     heading: "Retention — the reason Saloona exists",
+    icon: "users" as IconName,
     items: [
       {
         title: "Per-customer visit cadence",
@@ -838,6 +839,7 @@ const FEATURE_GROUPS = [
   },
   {
     heading: "Reception and daily operations",
+    icon: "zap" as IconName,
     items: [
       {
         title: "Checkout with multi-service bills",
@@ -863,6 +865,7 @@ const FEATURE_GROUPS = [
   },
   {
     heading: "Loyalty your customers can see",
+    icon: "qr" as IconName,
     items: [
       {
         title: "Points on every rupee",
@@ -880,6 +883,7 @@ const FEATURE_GROUPS = [
   },
   {
     heading: "WhatsApp, from your own number",
+    icon: "whatsapp" as IconName,
     items: [
       {
         title: "Six message types",
@@ -901,6 +905,7 @@ const FEATURE_GROUPS = [
   },
   {
     heading: "Reports",
+    icon: "chart" as IconName,
     items: [
       {
         title: "Today and this month",
@@ -934,10 +939,18 @@ export const FeaturesPage: FC = () => (
     <div class="container-page py-16">
       {FEATURE_GROUPS.map((group) => (
         <section class="mb-14 last:mb-0">
-          <h2 class="text-2xl">{group.heading}</h2>
+          {/* One icon per group rather than per item: twenty glyphs across this
+              page would be decoration, while five give each block an anchor the
+              eye can find when scanning for a capability. */}
+          <div class="flex items-center gap-3">
+            <span class="icon-tile">
+              <Icon name={group.icon} class="size-5" />
+            </span>
+            <h2 class="text-2xl">{group.heading}</h2>
+          </div>
           <div class="mt-6 grid gap-5 md:grid-cols-2">
             {group.items.map((item) => (
-              <div class="card card-body">
+              <div class="card-hover card-body">
                 <h3 class="text-base">{item.title}</h3>
                 <p class="mt-2 text-sm leading-6 text-ink-600">{item.body}</p>
               </div>
@@ -1251,7 +1264,7 @@ export const WhatsappPage: FC = () => (
         </div>
 
         <aside class="space-y-5">
-          <div class="card card-body">
+          <div class="card-hover card-body">
             <p class="eyebrow">Example</p>
             <h3 class="mt-1 text-base">Win-back message</h3>
             <div class="mt-4 rounded-2xl bg-[#e7f6ea] p-4 text-sm leading-6 text-ink-800">
@@ -1267,7 +1280,7 @@ export const WhatsappPage: FC = () => (
             </p>
           </div>
 
-          <div class="card card-body">
+          <div class="card-hover card-body">
             <h3 class="text-base">What it costs</h3>
             <p class="mt-2 text-sm leading-6 text-ink-600">
               Meta charges per 24-hour conversation, and rates differ between utility messages (reminders,
@@ -1365,7 +1378,7 @@ export const ContactPage: FC = () => (
 
     <div class="container-page py-16">
       <div class="grid gap-8 md:grid-cols-2">
-        <div class="card card-body">
+        <div class="card-hover card-body">
           <h2 class="text-lg">Email us</h2>
           <p class="mt-2 text-sm leading-6 text-ink-600">
             The fastest route. Tell us how many branches you run and what you use today.
@@ -1377,7 +1390,7 @@ export const ContactPage: FC = () => (
 
         {/* Deliberately no phone number. Support here is email, and one
             address that is actually answered beats a number nobody picks up. */}
-        <div class="card card-body">
+        <div class="card-hover card-body">
           <h2 class="text-lg">When we reply</h2>
           <p class="mt-2 text-sm leading-6 text-ink-600">
             Monday to Saturday, 10am to 7pm Pakistan Standard Time. Email sent inside those hours is answered
@@ -1443,7 +1456,7 @@ export const SupportPage: FC = () => (
     <div class="container-page py-16">
       <div class="grid gap-5 md:grid-cols-2">
         {SUPPORT_TOPICS.map((topic) => (
-          <div class="card card-body">
+          <div class="card-hover card-body">
             <h2 class="text-base">{topic.title}</h2>
             <p class="mt-2 text-sm leading-6 text-ink-600">{topic.body}</p>
           </div>
