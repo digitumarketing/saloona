@@ -62,6 +62,29 @@ jobs:
           set -euo pipefail
           BASE=https://saloona.shop
 
+          # Wait for the hostname to actually be served by this Worker.
+          #
+          # Attaching a custom domain is not instant, and until it resolves the
+          # name still answers from whatever was there before — which in this
+          # zone was a hosting placeholder that returns 200 at `/`. A plain
+          # check of `/` therefore cannot tell "the Worker is live" from "the
+          # old page is still up", and the first attach failed exactly that way.
+          #
+          # /pricing is the discriminator: this Worker serves it, and nothing
+          # else on this hostname ever did.
+          for attempt in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/pricing" || echo 000)
+            if [ "${code}" = "200" ]; then
+              echo "custom domain serving after ${attempt} attempt(s)"
+              break
+            fi
+            if [ "${attempt}" = "30" ]; then
+              echo "::error::${BASE}/pricing still returning ${code} after 30 attempts — custom domain is not attached"
+              exit 1
+            fi
+            sleep 10
+          done
+
           for path in / /pricing /login /sitemap.xml /robots.txt; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE}${path}")
             echo "${path} -> ${code}"

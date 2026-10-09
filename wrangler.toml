@@ -8,25 +8,31 @@ main = "src/server/index.ts"
 compatibility_date = "2026-08-22"
 workers_dev = true
 
-[observability]
-enabled = true
-
 # The public hostnames.
 #
 # `custom_domain = true` makes Cloudflare manage the DNS record for each name and
-# point it at this Worker, replacing whatever A record the zone had. Email is
-# untouched — MX records live beside these and are not Worker routes.
+# point it at this Worker, replacing whatever address record the zone had. Email
+# is untouched — MX records live beside these and are not Worker routes.
 #
 # www is attached so that typing it reaches the product rather than a DNS error;
 # the Worker then redirects it to the apex, so only one hostname ever answers
 # with a page. See the first middleware in src/server/index.ts.
 #
-# workers_dev stays on above as an operational fallback for the case where the
-# custom domain is misconfigured.
+# workers_dev stays on as an operational fallback for the case where the custom
+# domain is misconfigured.
+#
+# This block MUST stay above the first [table] header. TOML assigns every bare
+# key to the table most recently opened, so sitting below [observability] made
+# this `observability.routes`, which wrangler warned about and ignored — the
+# deploy succeeded and attached no domain at all.
 routes = [
   { pattern = "saloona.shop", custom_domain = true },
   { pattern = "www.saloona.shop", custom_domain = true }
 ]
+
+[observability]
+enabled = true
+
 
 # Built by `npm run build:client`. Serving the bundles from Cloudflare's asset
 # store rather than the Worker keeps them off the request path entirely.
