@@ -31,6 +31,36 @@ import type { AppEnv, Env } from "./types.js";
 const app = new Hono<AppEnv>();
 
 /**
+ * One canonical host.
+ *
+ * `www.saloona.shop` and `saloona.shop` are both attached to this Worker as
+ * custom domains, because a visitor who types either should reach the product
+ * rather than a DNS error. Serving both is a different thing from answering on
+ * both: two hostnames returning 200 for identical pages is duplicate content,
+ * and it splits whatever search ranking the site earns.
+ *
+ * So `www` answers with a permanent redirect to the apex and nothing else.
+ *
+ * Runs before every other middleware on purpose — there is no reason to resolve
+ * a session, or build a CSP, for a response whose entire body is a Location
+ * header.
+ *
+ * The workers.dev hostname is deliberately NOT redirected. It stays reachable as
+ * an operational fallback for the case where the custom domain itself is
+ * misconfigured, and it is safe to leave serving because `baseUrl()` pins every
+ * canonical tag, OG tag and QR link to BASE_URL regardless of which host the
+ * request arrived on.
+ */
+app.use("*", async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.hostname.startsWith("www.")) {
+    url.hostname = url.hostname.slice(4);
+    return c.redirect(url.toString(), 301);
+  }
+  await next();
+});
+
+/**
  * Baseline security headers.
  *
  * `script-src` allows no inline JavaScript at all: every inline script the Worker

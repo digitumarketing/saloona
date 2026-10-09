@@ -11,6 +11,23 @@ workers_dev = true
 [observability]
 enabled = true
 
+# The public hostnames.
+#
+# `custom_domain = true` makes Cloudflare manage the DNS record for each name and
+# point it at this Worker, replacing whatever A record the zone had. Email is
+# untouched — MX records live beside these and are not Worker routes.
+#
+# www is attached so that typing it reaches the product rather than a DNS error;
+# the Worker then redirects it to the apex, so only one hostname ever answers
+# with a page. See the first middleware in src/server/index.ts.
+#
+# workers_dev stays on above as an operational fallback for the case where the
+# custom domain is misconfigured.
+routes = [
+  { pattern = "saloona.shop", custom_domain = true },
+  { pattern = "www.saloona.shop", custom_domain = true }
+]
+
 # Built by `npm run build:client`. Serving the bundles from Cloudflare's asset
 # store rather than the Worker keeps them off the request path entirely.
 #
@@ -45,16 +62,4 @@ APP_ENV = "production"
 # join link printed on a salon's QR poster, and the link inside every WhatsApp
 # message. A QR code is printed once and sits on a reception desk for months, so
 # changing this later strands the posters already out in the world.
-#
-# STILL ON workers.dev ON PURPOSE. saloona.shop is registered but has no
-# nameservers yet, so the zone does not exist and the name does not resolve.
-# Pointing canonical tags, OG tags and every QR link at a domain that answers
-# nothing is strictly worse than this URL. Switch both this and the smoke-check
-# BASE in deploy.yml together, in one commit, once `dig saloona.shop` returns an
-# address — and add the custom-domain routes below at the same time:
-#
-#   routes = [
-#     { pattern = "saloona.shop", custom_domain = true },
-#     { pattern = "www.saloona.shop", custom_domain = true }
-#   ]
-BASE_URL = "https://saloona-saas.roshaanraza3.workers.dev"
+BASE_URL = "https://saloona.shop"
