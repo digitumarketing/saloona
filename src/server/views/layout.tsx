@@ -72,7 +72,7 @@ const FOOTER_GROUPS = [
   {
     heading: "Company",
     links: [
-      { href: "/about", label: "About Digitum" },
+      { href: "/about", label: `About ${brand.companyName}` },
       { href: "/contact", label: "Contact sales" },
       { href: "/faq", label: "FAQ" },
       { href: "/support", label: "Support" }
@@ -235,8 +235,9 @@ export const Shell: FC<PropsWithChildren<ShellProps>> = ({
         <meta property="og:url" content={canonical} />
         <meta property="og:image" content={`${origin}${assets.ogImage}`} />
         <meta property="og:locale" content="en_PK" />
+        {/* No twitter:site: the tag points at an account that must exist. An
+            unclaimed handle attributes the card to nobody, or to someone else. */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content={brand.social.twitter} />
         <meta name="twitter:title" content={fullTitle} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={`${origin}${assets.ogImage}`} />
@@ -313,8 +314,10 @@ export function organizationJsonLd(origin: string): Record<string, unknown> {
     url: origin,
     logo: `${origin}${assets.icon512}`,
     email: brand.supportEmail,
-    address: { "@type": "PostalAddress", addressCountry: "PK" },
-    sameAs: [brand.social.linkedin]
+    address: { "@type": "PostalAddress", addressCountry: "PK" }
+    // No `sameAs`. It asserts to search engines that these profiles are this
+    // organisation; pointing it at profiles that do not exist is worse than
+    // omitting it. Add it back when the accounts are real.
   };
 }
 

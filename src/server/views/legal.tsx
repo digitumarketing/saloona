@@ -50,10 +50,14 @@ export const TermsPage: FC = () => (
   >
     <h2>1. Who this agreement is with</h2>
     <p>
-      {brand.productName} is operated by {brand.legalName} ("{brand.companyName}", "we"), a company registered
-      in {brand.country}. By creating an account you agree to these terms on behalf of the business you
-      represent ("you", "your business"). If you are not authorised to bind that business, do not create an
-      account.
+      {/* Deliberately does not say "a company registered in Pakistan". The
+          business is not incorporated yet, and this is a term users accept —
+          an untrue statement about who they are contracting with is the one
+          thing a terms page must never contain. Update this, and brand.legalName,
+          on the day registration completes. */}
+      {brand.productName} ("we") is a business based in {brand.country}. By creating an account you agree to
+      these terms on behalf of the business you represent ("you", "your business"). If you are not authorised
+      to bind that business, do not create an account.
     </p>
 
     <h2>2. What we provide</h2>

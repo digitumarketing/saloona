@@ -175,7 +175,7 @@ marketingRoutes.get("/about", (c) =>
 marketingRoutes.get("/contact", (c) =>
   renderPage(c, {
     title: "Contact sales and support",
-    description: `Email ${brand.supportEmail} or call ${brand.salesPhone}. Questions about pricing, WhatsApp setup, or multi-branch quotes answered the same working day.`,
+    description: `Email ${brand.supportEmail}. Questions about pricing, WhatsApp setup, or multi-branch quotes answered the same working day.`,
     path: "/contact",
     jsonLd: marketingJsonLd(c, [{ name: "Contact", path: "/contact" }]),
     children: <ContactPage />
