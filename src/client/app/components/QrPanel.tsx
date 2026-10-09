@@ -46,7 +46,7 @@ export function QrPanel({ url, salonName }: { url: string; salonName: string }) 
 
   return (
     <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-start">
-      <div className="mx-auto w-48 rounded-2xl border border-ink-100 bg-white p-3 shadow-[--shadow-card] sm:mx-0">
+      <div className="mx-auto w-48 rounded-2xl border border-ink-100 bg-white p-3 shadow-card sm:mx-0">
         {slug ? (
           <img
             src={`/j/${slug}/qr.svg?size=480`}

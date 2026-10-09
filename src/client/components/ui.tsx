@@ -578,7 +578,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`relative z-10 w-full ${width} rounded-t-2xl bg-white shadow-[--shadow-lift] sm:rounded-2xl`}
+        className={`relative z-10 w-full ${width} rounded-t-2xl bg-white shadow-lift sm:rounded-2xl`}
       >
         <header className="flex items-start justify-between gap-4 border-b border-ink-100 px-5 py-4">
           <div>
@@ -701,7 +701,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role={toast.kind === "error" ? "alert" : "status"}
-            className={`pointer-events-auto w-full max-w-sm rounded-xl px-4 py-3 text-sm font-medium shadow-[--shadow-lift] ${
+            className={`pointer-events-auto w-full max-w-sm rounded-xl px-4 py-3 text-sm font-medium shadow-lift ${
               toast.kind === "success"
                 ? "bg-ink-900 text-white"
                 : toast.kind === "error"

@@ -24,43 +24,74 @@
 @source "../../shared";
 
 @theme {
-  /* Ink is the near-navy used for text and the dark sections. */
-  --color-ink-50: #f4f6fb;
-  --color-ink-100: #e6eaf3;
-  --color-ink-200: #c8d1e4;
-  --color-ink-300: #9aa9c8;
-  --color-ink-400: #64789f;
-  --color-ink-500: #3f547d;
-  --color-ink-600: #2a3d63;
-  --color-ink-700: #1e2e4d;
-  --color-ink-800: #17233b;
-  --color-ink-900: #101a2d;
+  /*
+   * Ink — the near-navy behind all text and every dark section.
+   *
+   * Deepened at the top of the scale and cooled slightly through the middle.
+   * The previous 900 was #101a2d, which on a large dark band read as washed
+   * grey-blue rather than as a deliberate colour; the extra depth is most of
+   * what makes the dark sections feel intentional.
+   */
+  --color-ink-50: #f5f7fb;
+  --color-ink-100: #e6ebf3;
+  --color-ink-200: #c9d2e2;
+  --color-ink-300: #9aa8c3;
+  --color-ink-400: #64779c;
+  --color-ink-500: #3d5279;
+  --color-ink-600: #283c61;
+  --color-ink-700: #1b2c4a;
+  --color-ink-800: #122036;
+  --color-ink-900: #0b1220;
 
-  /* Teal carries every primary action. */
-  --color-brand-50: #effcf9;
-  --color-brand-100: #c8f5ec;
-  --color-brand-200: #96e9dc;
-  --color-brand-300: #5dd6c6;
-  --color-brand-400: #2fbcac;
-  --color-brand-500: #14a094;
-  --color-brand-600: #0f8078;
-  --color-brand-700: #106661;
-  --color-brand-800: #11514e;
-  --color-brand-900: #0f4340;
+  /*
+   * Teal carries every primary action.
+   *
+   * The light end is more saturated so icon tiles and tinted panels read as
+   * brand colour instead of grey-green. 600 and 700 are deliberately NOT
+   * brightened: they sit under white text on buttons and badges, and every
+   * pairing in this file is contrast-checked against WCAG AA.
+   */
+  --color-brand-50: #ecfdf8;
+  --color-brand-100: #cdfaee;
+  --color-brand-200: #96f0de;
+  --color-brand-300: #5ce0ca;
+  --color-brand-400: #24c5b1;
+  --color-brand-500: #0faa99;
+  --color-brand-600: #0c8378;
+  --color-brand-700: #0c6a62;
+  --color-brand-800: #0e544f;
+  --color-brand-900: #0d4542;
 
   /* Gold marks rewards, points, and money recovered. */
-  --color-gold-100: #fdf1d6;
-  --color-gold-300: #f6cd6b;
-  --color-gold-500: #e0a020;
-  --color-gold-700: #a86f10;
+  --color-gold-100: #fdf2d9;
+  --color-gold-300: #f7d070;
+  --color-gold-500: #e3a51f;
+  /* Darker than it looks like it needs to be: this is the text colour of
+     .badge-gold, which sits on --color-gold-100, not on white. */
+  --color-gold-700: #8d5d0b;
 
   --font-sans: "Inter var", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, "Noto Sans", "Noto Nastaliq Urdu", sans-serif;
 
   --radius-card: 1rem;
+  --radius-panel: 1.5rem;
 
-  --shadow-card: 0 1px 2px rgb(16 26 45 / 0.04), 0 8px 24px -12px rgb(16 26 45 / 0.12);
-  --shadow-lift: 0 2px 4px rgb(16 26 45 / 0.05), 0 18px 40px -16px rgb(16 26 45 / 0.22);
+  /*
+   * Three stacked layers rather than one blur: a hairline that reads as the
+   * card's own edge, a short close shadow for contact with the page, and a long
+   * soft one for distance. A single large blur reads as haze; this reads as
+   * depth, which is most of the difference between a flat page and a designed
+   * one.
+   */
+  --shadow-card: 0 0 0 1px rgb(16 26 45 / 0.04), 0 1px 2px rgb(16 26 45 / 0.04),
+    0 8px 24px -12px rgb(16 26 45 / 0.14);
+  --shadow-lift: 0 0 0 1px rgb(16 26 45 / 0.05), 0 2px 4px rgb(16 26 45 / 0.05),
+    0 22px 48px -18px rgb(16 26 45 / 0.26);
+  --shadow-panel: 0 0 0 1px rgb(16 26 45 / 0.05), 0 4px 8px rgb(16 26 45 / 0.04),
+    0 32px 64px -24px rgb(16 26 45 / 0.28);
+  /* Primary buttons: a lit top edge plus the button's own cast shadow. */
+  --shadow-brand: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 1px 2px rgb(15 102 97 / 0.24),
+    0 8px 20px -8px rgb(15 102 97 / 0.44);
 }
 
 /*
@@ -103,9 +134,16 @@
 }
 
 @utility card {
-  /* `rounded-card` / `shadow-card`, not `rounded-[--radius-card]`: the tokens are
-     declared in @theme, so Tailwind generates named utilities for them. The v3
-     bracket form emits `border-radius: --radius-card`, which is not valid CSS. */
+  /* Named utilities, not the v3 arbitrary-value bracket form. The tokens are
+     declared in @theme, so Tailwind generates `rounded-card` and `shadow-card`
+     from them; the bracket form emits a raw custom-property name as the value,
+     which is not valid CSS and silently renders as nothing.
+
+     The example is spelled out in prose rather than written literally, on
+     purpose. Tailwind v4 scans this file AND, through automatic source
+     detection, the repository root — Markdown included. A bracket class quoted
+     anywhere, even inside a CSS comment or a handover document, is picked up as
+     a real class and emits that same dead rule into the bundle. */
   @apply rounded-card border border-ink-100 bg-white shadow-card;
 }
 
@@ -144,6 +182,24 @@
     @apply text-ink-900 font-semibold tracking-tight;
     text-wrap: balance;
   }
+
+  /* Optical correction: at display sizes the default letter-spacing reads
+     loose, and the gap between lines reads wide. Only h1/h2 are large enough
+     for this to apply without hurting legibility. */
+  h1 {
+    letter-spacing: -0.025em;
+    line-height: 1.08;
+  }
+
+  h2 {
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /* Long-form body copy sits better slightly wider than Tailwind's default. */
+  p {
+    text-wrap: pretty;
+  }
 }
 
 @layer components {
@@ -162,13 +218,33 @@
   }
 
   .eyebrow {
-    @apply text-brand-700 text-xs font-semibold uppercase tracking-[0.14em];
+    @apply text-brand-700 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em];
+  }
+
+  /* A short rule before the label. Pure decoration, so it is a pseudo-element
+     and never reaches the accessibility tree or a copy-paste. */
+  .eyebrow::before {
+    content: "";
+    @apply h-px w-6 bg-brand-300;
+  }
+
+  /* Centred section heads need the rule on both sides or the label sits off-axis. */
+  .eyebrow-center::after {
+    content: "";
+    @apply h-px w-6 bg-brand-300;
   }
 
   /* ---------------------------------------------------------------- buttons */
 
   .btn-primary {
-    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800;
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+    box-shadow: var(--shadow-brand);
+  }
+
+  /* 1px is enough to feel like a press without moving the layout. */
+  .btn-primary:active,
+  .btn-gold:active {
+    transform: translateY(1px);
   }
 
   .btn-secondary {
@@ -185,12 +261,62 @@
 
   .btn-gold {
     @apply btn bg-gold-500 text-ink-900 hover:bg-gold-300;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 1px 2px rgb(168 111 16 / 0.28),
+      0 8px 20px -8px rgb(168 111 16 / 0.5);
   }
 
   /* ------------------------------------------------------------------ cards */
 
   .card-hover {
-    @apply card transition-shadow duration-200 hover:shadow-lift;
+    @apply card transition-all duration-200;
+  }
+
+  .card-hover:hover {
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-2px);
+  }
+
+  /* A panel is a card that is the focus of its section rather than one of a
+     row: larger radius, deeper shadow, more interior space. */
+  .panel {
+    @apply border border-ink-100 bg-white;
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+  }
+
+  /*
+   * The icon tile that anchors every feature card and step. Square with a soft
+   * tint rather than a bare glyph: at 20px a stroke icon alone disappears into
+   * the text, and the tile gives it enough weight to act as the card's anchor.
+   */
+  .icon-tile {
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-xl
+           bg-brand-50 text-brand-700 ring-1 ring-brand-100;
+  }
+
+  .icon-tile-gold {
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-xl
+           bg-gold-100 text-gold-700 ring-1 ring-gold-300/50;
+  }
+
+  .icon-tile-dark {
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-xl
+           bg-white/10 text-brand-200 ring-1 ring-white/15;
+  }
+
+  /*
+   * A numbered step marker. Solid rather than the outlined pale circle it
+   * replaces, which was too light to register as a sequence at all.
+   */
+  .step-badge {
+    @apply inline-flex size-9 shrink-0 items-center justify-center rounded-full
+           bg-ink-900 text-sm font-semibold text-white tabular-nums;
+  }
+
+  /* The display numeral in the problem statistics. */
+  .stat-display {
+    @apply text-4xl font-semibold tracking-tight text-ink-900 sm:text-5xl;
+    letter-spacing: -0.03em;
   }
 
   .stat-card {
