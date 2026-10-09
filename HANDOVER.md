@@ -189,7 +189,7 @@ unresolved name, this took down the entire client build, not just one rule.
 The shared bases (`btn`, `card`, `card-body`, `badge`, `tabular`) are now
 `@utility`, which registers them as real utilities and keeps them ordered by
 declaration, so `btn-lg` still overrides `btn`'s padding. The v3-style
-`rounded-[--radius-card]` arbitrary values became `rounded-card` / `shadow-card`
+v3 arbitrary-value bracket tokens became the named `rounded-card` / `shadow-card`
 — the named utilities the `@theme` tokens already generate. The bracket form
 emitted `border-radius: --radius-card`, which is not valid CSS.
 

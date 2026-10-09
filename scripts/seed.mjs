@@ -12,7 +12,7 @@
  *
  * It drives the real HTTP API rather than writing SQL directly. That costs a
  * running dev server and buys correctness for free: real password hashing (PBKDF2
- * at 210,000 iterations — not something a .sql file can fake), real validation,
+ * at the platform's maximum iteration count — not something a .sql file can fake), real validation,
  * real loyalty arithmetic, real cadence recomputation. A SQL seed would drift out
  * of date the first time a column moved.
  *
@@ -222,18 +222,18 @@ async function signUp() {
 async function seedCatalog() {
   const services = [];
   for (const service of SERVICES) {
-    const { service: created } = await post("/api/services", service);
+    const { service: created } = await post("/api/catalog/services", service);
     services.push(created);
   }
 
   const staff = [];
   for (const member of STAFF) {
-    const { staff: created } = await post("/api/staff", member);
+    const { staff: created } = await post("/api/catalog/staff", member);
     staff.push(created);
   }
 
   for (const reward of REWARDS) {
-    await post("/api/rewards", reward);
+    await post("/api/catalog/rewards", reward);
   }
 
   return { services, staff };

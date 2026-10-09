@@ -8,7 +8,7 @@
  * the query string invalidates every cached copy.
  */
 
-export const ASSET_VERSION = "3";
+export const ASSET_VERSION = "4";
 
 export const assets = {
   css: `/assets/app.css?v=${ASSET_VERSION}`,

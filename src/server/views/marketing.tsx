@@ -10,6 +10,7 @@
 
 import type { FC } from "hono/jsx";
 import { brand } from "../../shared/brand.js";
+import { Icon, type IconName } from "./icons.js";
 import { PLANS, formatPkr } from "../../shared/plans.js";
 
 // ---------------------------------------------------------------------------
@@ -22,10 +23,22 @@ const Hero: FC<{ eyebrow?: string; title: string; body: string; primary?: { href
   body,
   primary
 }) => (
-  <section class="bg-grid border-b border-ink-100 bg-ink-50/40">
+  <section class="relative isolate overflow-hidden border-b border-ink-100 bg-ink-50/40">
+    {/* Two soft radial washes behind the grid. Decorative only, so they are
+        aria-hidden and sit behind content via a negative z-index. */}
+    <div
+      aria-hidden="true"
+      class="bg-grid absolute inset-0 -z-10"
+      style="background-image:
+        radial-gradient(60rem 28rem at 12% -10%, rgb(15 170 153 / 0.18), transparent 62%),
+        radial-gradient(44rem 24rem at 92% 0%, rgb(227 165 31 / 0.13), transparent 64%),
+        linear-gradient(to right, rgb(16 26 45 / 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgb(16 26 45 / 0.04) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;"
+    />
     <div class="container-page py-16 sm:py-20">
       {eyebrow ? <p class="eyebrow mb-3">{eyebrow}</p> : null}
-      <h1 class="max-w-3xl text-3xl leading-tight sm:text-4xl">{title}</h1>
+      <h1 class="max-w-3xl text-3xl sm:text-4xl">{title}</h1>
       <p class="mt-4 max-w-2xl text-base leading-7 text-ink-600">{body}</p>
       {primary ? (
         <a href={primary.href} class="btn-primary btn-lg mt-7">
@@ -43,7 +56,7 @@ const SectionHead: FC<{ eyebrow?: string; title: string; body?: string; center?:
   center
 }) => (
   <div class={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
-    {eyebrow ? <p class="eyebrow mb-2">{eyebrow}</p> : null}
+    {eyebrow ? <p class={center ? "eyebrow eyebrow-center mb-2 justify-center" : "eyebrow mb-2"}>{eyebrow}</p> : null}
     <h2 class="text-2xl sm:text-3xl">{title}</h2>
     {body ? <p class="mt-3 text-base leading-7 text-ink-600">{body}</p> : null}
   </div>
@@ -75,7 +88,9 @@ const CtaBand: FC<{ title?: string; body?: string }> = ({ title, body }) => (
           Talk to us
         </a>
       </div>
-      <p class="mt-5 text-xs text-ink-400">
+      {/* ink-300, not ink-400: 400 is tuned to pass on white and falls to
+          4.2:1 on ink-900, which is below AA for this size. */}
+      <p class="mt-5 text-xs text-ink-300">
         Messages are sent from your own WhatsApp Business number. Customer payments go straight to your
         account — {brand.companyName} never touches them.
       </p>
@@ -109,32 +124,38 @@ const FEATURE_CARDS = [
   {
     title: "Lost customers, listed by name",
     body: "Saloona learns how often each customer normally visits and flags them the moment they are overdue — with the rupees you stand to recover next to each name.",
-    tag: "The headline feature"
+    tag: "The headline feature",
+    icon: "users" as IconName
   },
   {
     title: "One button to bring them back",
     body: "Pick the list, choose an offer, and send. Every message goes from your own WhatsApp Business number, and returning visits are matched back to the campaign that caused them.",
-    tag: "Win-back campaigns"
+    tag: "Win-back campaigns",
+    icon: "send" as IconName
   },
   {
     title: "Reception checkout in 15 seconds",
     body: "Search by phone number, tick the services, take the payment. Points are awarded, the visit is recorded, and the thank-you message queues itself.",
-    tag: "Daily use"
+    tag: "Daily use",
+    icon: "zap" as IconName
   },
   {
     title: "Loyalty your customers can see",
     body: "A QR code at the desk opens a points wallet on the customer's phone. No app to download, no card to lose, no plastic to print.",
-    tag: "Customer PWA"
+    tag: "Customer PWA",
+    icon: "qr" as IconName
   },
   {
     title: "Reminders timed per customer",
     body: "Someone who comes every two weeks is reminded on a different schedule to someone who comes every two months. One blanket reminder trains people to ignore you.",
-    tag: "Visit cadence"
+    tag: "Visit cadence",
+    icon: "calendar" as IconName
   },
   {
     title: "Numbers that answer real questions",
     body: "Which stylist earns the most. Which service actually sells. How much revenue came back from campaigns. Reports you would otherwise build in a notebook.",
-    tag: "Reports"
+    tag: "Reports",
+    icon: "chart" as IconName
   }
 ];
 
@@ -160,6 +181,418 @@ const STEPS = [
     body: "Saloona shows who is overdue. You decide the offer. The messages go out from your number."
   }
 ];
+
+// ---------------------------------------------------------------------------
+// Home — product tour
+// ---------------------------------------------------------------------------
+
+/**
+ * The screens, rendered rather than photographed.
+ *
+ * These are HTML panels built from the product's own design system, not PNG
+ * screenshots, for the reason already given at the hero panel: a screenshot is
+ * a picture of the app on the day it was taken and starts drifting from the
+ * real thing immediately. These stay crisp at any density, cost no image
+ * payload, restyle themselves when a token moves, and cannot show a version of
+ * the UI that no longer exists. The figures are the seeded demo salon's, so
+ * they are arithmetic the product actually produces.
+ */
+const TOUR_PANELS = [
+  {
+    eyebrow: "At the desk",
+    icon: "zap" as IconName,
+    title: "A visit takes fifteen seconds to record",
+    body: "Search by phone number, tap the services, take the payment. Points are awarded, the visit is recorded against that customer's cadence, and the thank-you message queues itself. Reception does not learn software — they tap three things and hand the phone back.",
+    panel: "checkout" as const
+  },
+  {
+    eyebrow: "On the customer's phone",
+    icon: "qr" as IconName,
+    title: "A loyalty card that cannot be left at home",
+    body: "The QR card on your desk opens a wallet in the customer's browser. No app to install, no account to make, no plastic to reprint. They see their points, what those points are worth, and when they are due back.",
+    panel: "wallet" as const
+  },
+  {
+    eyebrow: "Monday morning",
+    icon: "send" as IconName,
+    title: "The win-back list, and one button",
+    body: "Saloona has already worked out who is overdue against their own visit rhythm. You pick the offer and send. Every message leaves from your WhatsApp Business number, and any visit that follows is matched back to the campaign that caused it.",
+    panel: "campaign" as const
+  }
+];
+
+const CheckoutPanel: FC = () => (
+  <div class="panel overflow-hidden">
+    <div class="flex items-center justify-between border-b border-ink-100 px-5 py-3.5">
+      <p class="text-sm font-semibold text-ink-900">New visit</p>
+      <span class="badge-neutral">Glow Studio</span>
+    </div>
+    <div class="space-y-4 p-5">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-ink-400">1. Customer</p>
+        <div class="mt-2 flex items-center gap-3 rounded-xl border border-ink-100 bg-ink-50/60 px-3.5 py-2.5">
+          <span class="flex size-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+            AW
+          </span>
+          <div>
+            <p class="text-sm font-medium text-ink-900">Aqsa Waheed</p>
+            <p class="text-xs text-ink-400">6 visits · usually every 34 days</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-ink-400">2. What did they have?</p>
+        <div class="mt-2 space-y-2">
+          {[
+            { name: "Hair colour", meta: "120 min", price: 9000 },
+            { name: "Blow dry", meta: "30 min", price: 1800 }
+          ].map((line) => (
+            <div class="flex items-center justify-between rounded-xl border border-ink-100 px-3.5 py-2.5">
+              <div>
+                <p class="text-sm font-medium text-ink-900">{line.name}</p>
+                <p class="text-xs text-ink-400">{line.meta}</p>
+              </div>
+              <p class="tabular text-sm font-medium text-ink-700">{formatPkr(line.price)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center justify-between border-t border-ink-100 bg-ink-50/60 px-5 py-3.5">
+      <div>
+        <p class="text-xs text-ink-500">2 lines · 108 points earned</p>
+        <p class="tabular text-lg font-semibold text-ink-900">{formatPkr(10800)}</p>
+      </div>
+      <span class="btn-primary btn-sm" role="img" aria-label="Take payment button">
+        Take payment
+      </span>
+    </div>
+  </div>
+);
+
+const WalletPanel: FC = () => (
+  <div class="mx-auto w-full max-w-xs">
+    {/* A phone-shaped frame, because this screen is only ever seen on one. */}
+    <div class="panel overflow-hidden rounded-[2rem] p-2.5">
+      <div class="overflow-hidden rounded-3xl bg-ink-900">
+        <div class="px-5 pb-6 pt-7 text-center">
+          <p class="text-xs font-semibold uppercase tracking-wider text-brand-300">Glow Studio</p>
+          <p class="tabular mt-4 text-4xl font-semibold text-white">340</p>
+          <p class="mt-1 text-xs text-ink-300">points</p>
+          <p class="mt-4 inline-flex rounded-full bg-gold-500/15 px-3 py-1 text-xs font-medium text-gold-300">
+            {formatPkr(680)} off your next visit
+          </p>
+        </div>
+        <div class="space-y-2.5 bg-white px-4 pb-5 pt-4">
+          <p class="text-xs font-semibold uppercase tracking-wider text-ink-400">Recent visits</p>
+          {[
+            { what: "Hair colour", when: "12 days ago", pts: "+90" },
+            { what: "Threading", when: "a month ago", pts: "+6" },
+            { what: "Glow facial", when: "2 months ago", pts: "+45" }
+          ].map((row) => (
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-ink-900">{row.what}</p>
+                <p class="text-xs text-ink-400">{row.when}</p>
+              </div>
+              <p class="tabular text-xs font-semibold text-brand-700">{row.pts}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    <p class="mt-3 text-center text-xs text-ink-400">Opened by scanning the card at reception</p>
+  </div>
+);
+
+const CampaignPanel: FC = () => (
+  <div class="panel overflow-hidden">
+    <div class="border-b border-ink-100 px-5 py-3.5">
+      <p class="text-sm font-semibold text-ink-900">New win-back campaign</p>
+    </div>
+    <div class="space-y-4 p-5">
+      <div class="flex items-center justify-between gap-3 rounded-xl bg-ink-900 px-4 py-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-brand-300">Audience</p>
+          <p class="text-sm text-white">9 customers who have stopped coming</p>
+        </div>
+        <p class="tabular text-sm font-semibold text-gold-300">{formatPkr(103746)}</p>
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-ink-400">Message</p>
+        <div class="mt-2 rounded-xl rounded-tl-sm bg-brand-50 p-3.5 ring-1 ring-brand-100">
+          <p class="text-sm leading-6 text-ink-800">
+            Assalam-o-alaikum Aqsa! We have missed you at Glow Studio. Here is 20% off your next visit this
+            week — just show this message at the desk.
+          </p>
+          <p class="mt-2 text-right text-xs text-ink-400">from Glow Studio · WhatsApp</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 text-center">
+        {[
+          { k: "Sent", v: "9" },
+          { k: "Came back", v: "4" },
+          { k: "Recovered", v: formatPkr(41200) }
+        ].map((s) => (
+          <div class="rounded-xl border border-ink-100 px-2 py-2.5">
+            <p class="tabular text-sm font-semibold text-ink-900">{s.v}</p>
+            <p class="text-xs uppercase tracking-wider text-ink-400">{s.k}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const TourPanel: FC<{ kind: "checkout" | "wallet" | "campaign" }> = ({ kind }) =>
+  kind === "checkout" ? <CheckoutPanel /> : kind === "wallet" ? <WalletPanel /> : <CampaignPanel />;
+
+const ProductTour: FC = () => (
+  <section class="section border-t border-ink-100">
+    <div class="container-page">
+      <SectionHead
+        center
+        eyebrow="See it working"
+        title="Three screens is the whole product"
+        body="There is no twelfth menu to discover. A salon uses these every day, and nothing else is required to get the value."
+      />
+
+      <div class="mt-14 space-y-16 sm:space-y-20">
+        {TOUR_PANELS.map((item, index) => (
+          <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+            {/* The panel leads on alternate rows, so the page does not settle
+                into one column of text with pictures stapled to the right. */}
+            <div class={index % 2 === 1 ? "lg:order-2" : ""}>
+              <span class="icon-tile">
+                <Icon name={item.icon} class="size-5" />
+              </span>
+              <p class="eyebrow mt-4">{item.eyebrow}</p>
+              <h3 class="mt-2 text-xl sm:text-2xl">{item.title}</h3>
+              <p class="mt-3 text-base leading-7 text-ink-600">{item.body}</p>
+            </div>
+            <div class={index % 2 === 1 ? "lg:order-1" : ""}>
+              <TourPanel kind={item.panel} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+// ---------------------------------------------------------------------------
+// Home — how this compares to what the salon does today
+// ---------------------------------------------------------------------------
+
+/**
+ * The comparison is against a paper register and a spreadsheet, because that is
+ * what these salons actually use. Naming a competing product here would be a
+ * claim about software we have not evaluated.
+ */
+const COMPARISON_ROWS = [
+  { capability: "Record what each customer paid", register: "yes", excel: "yes" },
+  { capability: "Find the names that stopped coming", register: "no", excel: "manual" },
+  { capability: "Know each customer's own visit rhythm", register: "no", excel: "no" },
+  { capability: "Message them from your WhatsApp number", register: "no", excel: "no" },
+  { capability: "Run loyalty points without plastic cards", register: "no", excel: "manual" },
+  { capability: "See which stylist earns the most", register: "no", excel: "manual" },
+  { capability: "Survive the book being lost or soaked", register: "no", excel: "maybe" },
+  { capability: "Know the revenue a campaign brought back", register: "no", excel: "no" }
+];
+
+const Mark: FC<{ value: string }> = ({ value }) =>
+  value === "yes" ? (
+    <>
+      <svg
+        class="inline-block size-4 text-brand-700"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.3 3.3 6.8-6.8a1 1 0 0 1 1.9.5Z"
+          clip-rule="evenodd"
+        />
+      </svg>
+      <span class="sr-only">Yes</span>
+    </>
+  ) : value === "no" ? (
+    <>
+      <span aria-hidden="true" class="text-ink-300">
+        —
+      </span>
+      <span class="sr-only">No</span>
+    </>
+  ) : (
+    <span class="text-xs font-medium text-ink-500">{value === "manual" ? "By hand" : "Maybe"}</span>
+  );
+
+const Comparison: FC = () => (
+  <section class="section border-t border-ink-100 bg-ink-50/50">
+    <div class="container-page">
+      <SectionHead
+        center
+        eyebrow="Against what you use today"
+        title="The register is not wrong. It is silent."
+        body="A book of names and amounts records the past perfectly and tells you nothing about who is missing. That gap is the entire product."
+      />
+
+      <div class="table-wrap mt-12 overflow-x-auto">
+        <table class="table min-w-xl">
+          <thead>
+            <tr>
+              <th scope="col">Can you…</th>
+              <th scope="col" class="text-center">
+                Paper register
+              </th>
+              <th scope="col" class="text-center">
+                Excel sheet
+              </th>
+              <th scope="col" class="text-center">
+                Saloona
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {COMPARISON_ROWS.map((row) => (
+              <tr>
+                <td class="font-medium text-ink-800">{row.capability}</td>
+                <td class="text-center">
+                  <Mark value={row.register} />
+                </td>
+                <td class="text-center">
+                  <Mark value={row.excel} />
+                </td>
+                <td class="bg-brand-50/60 text-center">
+                  <Mark value="yes" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+);
+
+// ---------------------------------------------------------------------------
+// Home — a week of actual use
+// ---------------------------------------------------------------------------
+
+const WEEK = [
+  {
+    day: "Every day",
+    title: "Reception bills through Saloona",
+    body: "The only habit that has to change. Each visit takes a few seconds longer than the register did, and everything below depends on it."
+  },
+  {
+    day: "That evening",
+    title: "Thank-you messages go out",
+    body: "From your number, with your salon's name on them. Nobody has to press anything."
+  },
+  {
+    day: "Monday",
+    title: "The win-back list is already waiting",
+    body: "Everyone overdue against their own rhythm, with the rupees next to each name. Choose an offer and send."
+  },
+  {
+    day: "Through the week",
+    title: "They come back, and it is counted",
+    body: "A returning visit inside the attribution window is credited to the campaign that caused it. Only a real, completed visit counts — the number is deliberately conservative."
+  },
+  {
+    day: "Month end",
+    title: "One number settles the question",
+    body: "Revenue recovered from customers who had stopped coming, against a subscription of PKR 3,999. The decision to renew makes itself."
+  }
+];
+
+const WeekInLife: FC = () => (
+  <section class="section border-t border-ink-100">
+    <div class="container-page">
+      <SectionHead
+        eyebrow="A week with Saloona"
+        title="What actually changes at the desk"
+        body="One new habit. The rest runs whether or not anybody remembers to run it."
+      />
+
+      <ol class="mt-12">
+        {WEEK.map((item, index) => (
+          <li class="relative flex gap-5 pb-9 last:pb-0">
+            {/* The connector stops before the last marker, so the timeline ends
+                rather than trailing off. */}
+            {index < WEEK.length - 1 ? (
+              <span aria-hidden="true" class="absolute left-4 top-10 h-full w-px bg-ink-100" />
+            ) : null}
+            <span class="step-badge relative z-10">{index + 1}</span>
+            <div class="pt-1">
+              <p class="eyebrow">{item.day}</p>
+              <h3 class="mt-1.5 text-base">{item.title}</h3>
+              <p class="mt-1.5 max-w-xl text-sm leading-6 text-ink-600">{item.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+);
+
+// ---------------------------------------------------------------------------
+// Home — data ownership
+// ---------------------------------------------------------------------------
+
+const OWNERSHIP = [
+  {
+    icon: "shield" as IconName,
+    title: "One salon cannot see another",
+    body: "Every query that touches customer data carries the organisation it belongs to, supplied by the server from your session and never by the browser. It is enforced in the layer that builds the SQL, not left to each screen to remember."
+  },
+  {
+    icon: "whatsapp" as IconName,
+    title: "Your number, your Meta account",
+    body: "Messages leave from your own WhatsApp Business number and Meta bills you directly. We never message your customers from a shared number, so your salon's name is what they see."
+  },
+  {
+    icon: "users" as IconName,
+    title: "The customer list is yours",
+    body: "Export every customer, visit and payment to CSV whenever you want, including on the day you leave. No export fee, and no retention period to wait out."
+  },
+  {
+    icon: "spark" as IconName,
+    title: "We never touch customer money",
+    body: "Cash, Raast, JazzCash, Easypaisa or card — payment reaches you exactly as it does today. Saloona records the amount and nothing else. The only money we collect is your subscription."
+  }
+];
+
+const DataOwnership: FC = () => (
+  <section class="section border-t border-ink-100 bg-ink-900">
+    <div class="container-page">
+      <div class="mx-auto max-w-2xl text-center">
+        <p class="eyebrow eyebrow-center mb-2 justify-center text-brand-300">Your data</p>
+        <h2 class="text-2xl text-white sm:text-3xl">Built so that leaving is easy</h2>
+        <p class="mt-3 text-base leading-7 text-ink-200">
+          Software that holds a business hostage does not have to be good. We would rather you stayed because
+          the win-back list pays for itself.
+        </p>
+      </div>
+
+      <div class="mt-12 grid gap-5 sm:grid-cols-2">
+        {OWNERSHIP.map((item) => (
+          <div class="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+            <span class="icon-tile-dark">
+              <Icon name={item.icon} class="size-5" />
+            </span>
+            <h3 class="mt-4 text-base text-white">{item.title}</h3>
+            <p class="mt-2 text-sm leading-6 text-ink-200">{item.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
 
 export const HomePage: FC = () => (
   <>
@@ -202,7 +635,7 @@ export const HomePage: FC = () => (
 
         {/* A representative dashboard panel rather than a screenshot, so it never
             goes stale against the real product. */}
-        <div class="card shadow-[--shadow-lift]">
+        <div class="card shadow-lift">
           <div class="flex items-center justify-between border-b border-ink-100 px-5 py-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wider text-ink-400">Lost customers</p>
@@ -250,9 +683,9 @@ export const HomePage: FC = () => (
         />
         <div class="mt-12 grid gap-5 md:grid-cols-3">
           {PROBLEMS.map((item) => (
-            <div class="card card-body">
-              <p class="tabular text-3xl font-semibold text-brand-600">{item.stat}</p>
-              <p class="mt-1 text-sm font-semibold text-ink-900">{item.label}</p>
+            <div class="card-hover card-body">
+              <p class="stat-display tabular text-brand-600">{item.stat}</p>
+              <p class="mt-2 text-sm font-semibold text-ink-900">{item.label}</p>
               <p class="mt-3 text-sm leading-6 text-ink-600">{item.body}</p>
             </div>
           ))}
@@ -271,7 +704,10 @@ export const HomePage: FC = () => (
         <div class="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {FEATURE_CARDS.map((card) => (
             <div class="card-hover card-body">
-              <p class="eyebrow">{card.tag}</p>
+              <span class="icon-tile">
+                <Icon name={card.icon} class="size-5" />
+              </span>
+              <p class="eyebrow mt-4">{card.tag}</p>
               <h3 class="mt-2 text-base">{card.title}</h3>
               <p class="mt-2 text-sm leading-6 text-ink-600">{card.body}</p>
             </div>
@@ -285,6 +721,10 @@ export const HomePage: FC = () => (
       </div>
     </section>
 
+    <ProductTour />
+
+    <Comparison />
+
     <section class="section">
       <div class="container-page">
         <SectionHead
@@ -294,10 +734,8 @@ export const HomePage: FC = () => (
         />
         <ol class="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step) => (
-            <li class="card card-body">
-              <span class="flex size-9 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700">
-                {step.n}
-              </span>
+            <li class="card-hover card-body">
+              <span class="step-badge">{step.n}</span>
               <h3 class="mt-4 text-base">{step.title}</h3>
               <p class="mt-2 text-sm leading-6 text-ink-600">{step.body}</p>
             </li>
@@ -305,6 +743,10 @@ export const HomePage: FC = () => (
         </ol>
       </div>
     </section>
+
+    <WeekInLife />
+
+    <DataOwnership />
 
     <section class="section border-t border-ink-100 bg-ink-50/50">
       <div class="container-page grid gap-10 lg:grid-cols-2">
@@ -559,7 +1001,7 @@ export const PricingPage: FC = () => (
           <div
             class={
               plan.highlighted
-                ? "card card-body relative border-brand-300 shadow-[--shadow-lift] ring-1 ring-brand-200"
+                ? "card card-body relative border-brand-300 shadow-lift ring-1 ring-brand-200"
                 : "card card-body"
             }
           >

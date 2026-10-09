@@ -294,7 +294,7 @@ function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
           {userOpen ? (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setUserOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 z-20 mt-2 w-60 rounded-xl border border-ink-100 bg-white p-1.5 shadow-[--shadow-lift]">
+              <div className="absolute right-0 z-20 mt-2 w-60 rounded-xl border border-ink-100 bg-white p-1.5 shadow-lift">
                 <div className="px-3 py-2">
                   <p className="truncate text-sm font-semibold text-ink-900">{data.user.name}</p>
                   <p className="truncate text-xs text-ink-500">{data.user.email}</p>
@@ -332,7 +332,7 @@ function MobileDrawer({ open, onClose, path }: { open: boolean; onClose: () => v
   return (
     <div className="fixed inset-0 z-40 lg:hidden">
       <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} aria-hidden="true" />
-      <div className="relative flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-[--shadow-lift]">
+      <div className="relative flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-lift">
         <SidebarBrand />
         <NavList path={path} onNavigate={onClose} />
         <PlanFooter />
