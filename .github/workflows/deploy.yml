@@ -60,7 +60,7 @@ jobs:
       - name: Smoke check
         run: |
           set -euo pipefail
-          BASE=https://saloona-saas.roshaanraza3.workers.dev
+          BASE=https://saloona.shop
 
           for path in / /pricing /login /sitemap.xml /robots.txt; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE}${path}")
@@ -87,3 +87,13 @@ jobs:
             -d '{"email":"smoke-check@invalid.test","password":"not-a-real-password"}')
           echo "POST /api/auth/login -> ${code}"
           test "${code}" = "401" || test "${code}" = "429"
+
+          # www must redirect to the apex, not answer with its own copy of the
+          # site. Two hostnames serving identical pages is duplicate content,
+          # and this is the only check that would notice the redirect being
+          # dropped — every page check above requests the apex directly.
+          code=$(curl -s -o /dev/null -w '%{http_code}' "https://www.saloona.shop/pricing")
+          location=$(curl -s -o /dev/null -w '%{redirect_url}' "https://www.saloona.shop/pricing")
+          echo "www/pricing -> ${code} ${location}"
+          test "${code}" = "301"
+          test "${location}" = "https://saloona.shop/pricing"
