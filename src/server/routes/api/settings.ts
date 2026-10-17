@@ -8,7 +8,7 @@
  */
 
 import { Hono } from "hono";
-import { db, requireRole, session } from "../../middleware/auth.js";
+import { db, requireActiveSubscription, requireRole, session } from "../../middleware/auth.js";
 import { apiError, validationError } from "../../lib/http.js";
 import {
   locationCreateSchema,
@@ -225,6 +225,46 @@ settingsRoutes.get("/messages", async (c) => {
       stats,
       usage: { used, allowance: planLimits(context.organization.planId).monthlyMessages }
     });
+  } catch (error) {
+    return apiError(c, error);
+  }
+});
+
+/**
+ * Marks a queued message as sent by hand.
+ *
+ * This is the Starter plan's delivery path. With no connected WhatsApp number
+ * nothing drains the queue, so the salon opens each message on the reception
+ * phone and sends it themselves; this records that so tomorrow's list does not
+ * offer the same message again.
+ *
+ * Gated by `requireActiveSubscription`, and that deserves an explanation,
+ * because elsewhere a past-due workspace keeps full read *and write* access to
+ * its own records. The distinction is what the row represents. A customer, a
+ * visit, a price — those belong to the salon and are theirs whether or not an
+ * invoice is paid. The outbound queue is not a record of their business; it is
+ * this product's work output, and pausing it is exactly what the dashboard
+ * already promises a past-due workspace ("automated messages are paused until
+ * payment clears"). Leaving the hand-send path open would make that promise
+ * false and hand Starter the entire product for free after the trial lapsed —
+ * the same hole the paywall was built to close, reopened on the cheaper tier.
+ *
+ * The customer list behind these messages stays fully readable throughout.
+ */
+settingsRoutes.post("/messages/:id/sent", requireActiveSubscription, async (c) => {
+  try {
+    const context = session(c);
+    const queue = new MessageQueue(db(c), context.organization.timezone);
+    const marked = await queue.markSentByHand(c.req.param("id"));
+
+    // A message that was not `queued` — already sent, failed, or belonging to
+    // another tenant, which `{where}` makes indistinguishable from absent — is
+    // a 404 rather than a silent success, so the UI cannot show a tick for
+    // something that did not change.
+    if (!marked) {
+      return c.json({ error: "That message is no longer waiting to be sent", code: "not_found" }, 404);
+    }
+    return c.json({ ok: true });
   } catch (error) {
     return apiError(c, error);
   }

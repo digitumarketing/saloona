@@ -27,6 +27,7 @@ interface SeededRecords {
   rewardId: string;
   visitId: string;
   campaignId: string;
+  messageId: string;
 }
 
 /** Fills a salon with one of everything that has an ID a request can name. */
@@ -68,13 +69,21 @@ async function seed(tenant: Tenant): Promise<SeededRecords> {
     })
   );
 
+  // Recording a visit queues a thank-you message, which gives this suite a
+  // message id to attack. Nothing drains the queue in tests, so it stays
+  // `queued` and is a live target for the hand-send endpoint.
+  const { messages } = await ok<{ messages: Array<{ id: string }> }>(tenant.get("/api/settings/messages"));
+  const messageId = messages[0]?.id;
+  if (!messageId) throw new Error("Seeding produced no queued message to test against");
+
   return {
     customerId: customer.id,
     serviceId: service.id,
     staffId: staff.id,
     rewardId: reward.id,
     visitId: visit.id,
-    campaignId: campaign.id
+    campaignId: campaign.id,
+    messageId
   };
 }
 
@@ -119,7 +128,11 @@ describe("tenant isolation", () => {
       [`DELETE /api/catalog/staff/:id`, () => salonB.del(`/api/catalog/staff/${owned.staffId}`)],
       [`DELETE /api/catalog/rewards/:id`, () => salonB.del(`/api/catalog/rewards/${owned.rewardId}`)],
       [`POST /api/visits/:id/void`, () => salonB.post(`/api/visits/${owned.visitId}/void`, { reason: "test" })],
-      [`POST /api/campaigns/:id/send`, () => salonB.post(`/api/campaigns/${owned.campaignId}/send`)]
+      [`POST /api/campaigns/:id/send`, () => salonB.post(`/api/campaigns/${owned.campaignId}/send`)],
+      [
+        `POST /api/settings/messages/:id/sent`,
+        () => salonB.post(`/api/settings/messages/${owned.messageId}/sent`)
+      ]
     ];
     for (const [label, send] of writes) {
       const response = await send();
