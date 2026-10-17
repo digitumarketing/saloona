@@ -146,6 +146,7 @@ export class MessageQueue {
     Array<{
       id: string;
       customer_name: string | null;
+      to_phone: string | null;
       template_key: string;
       body: string;
       status: string;
@@ -153,16 +154,48 @@ export class MessageQueue {
       last_error: string | null;
       scheduled_for: string;
       sent_at: string | null;
+      provider: string;
     }>
   > {
+    // `to_phone` and `provider` are selected for the hand-send list: the first
+    // builds the wa.me link, the second is how the log distinguishes a message
+    // the platform delivered from one a human was credited with sending.
     return this.db.all(
-      `select m.id, c.full_name as customer_name, m.template_key, m.body, m.status, m.attempts,
-              m.last_error, m.scheduled_for, m.sent_at
+      `select m.id, c.full_name as customer_name, m.to_phone, m.template_key, m.body, m.status,
+              m.attempts, m.last_error, m.scheduled_for, m.sent_at, m.provider
        from message_queue m left join customers c on c.id = m.customer_id
        where 1 = 1 {where:m}
        order by m.created_at desc limit ?`,
       [Math.min(limit, 200)]
     );
+  }
+
+  /**
+   * Records that a person sent a queued message by hand.
+   *
+   * On the Starter plan there is no connected WhatsApp number, so nothing
+   * drains the queue. The salon opens each message in WhatsApp from the
+   * reception phone and sends it themselves; this is how the queue learns that
+   * happened, so the same message is not offered again tomorrow.
+   *
+   * `provider` is set to `manual` rather than left as it was. The message log
+   * must not claim the platform delivered something it never touched — and
+   * unlike an API send there is no delivery receipt behind this, only a
+   * person's word that they pressed send.
+   *
+   * Scoped to `queued`, so this cannot resurrect a failed message or double-
+   * count one the API already sent. `changes` tells the caller whether the row
+   * was actually in a state to be marked.
+   */
+  async markSentByHand(messageId: string): Promise<boolean> {
+    const ts = nowIso();
+    const result = await this.db.run(
+      `update message_queue
+          set status = 'sent', sent_at = ?, provider = 'manual', updated_at = ?
+        where id = ? and status = 'queued' {where}`,
+      [ts, ts, messageId]
+    );
+    return (result.meta.changes ?? 0) > 0;
   }
 }
 

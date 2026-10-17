@@ -259,6 +259,8 @@ export interface MessageTemplate {
 export interface QueuedMessage {
   id: string;
   customer_name: string | null;
+  /** E.164. Used to build the wa.me link on the hand-send list. */
+  to_phone: string | null;
   template_key: string;
   body: string;
   status: string;
@@ -266,6 +268,8 @@ export interface QueuedMessage {
   last_error: string | null;
   scheduled_for: string;
   sent_at: string | null;
+  /** `manual` when a person sent it themselves; otherwise the delivery provider. */
+  provider: string;
 }
 
 export interface Bootstrap {
